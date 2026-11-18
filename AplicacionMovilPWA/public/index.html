@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#103b56" />
+    <meta name="description" content="Consulta móvil de vehículos a través de una API REST con autenticación JWT." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Vehículos Móvil · PWA</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/main.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="encabezado">
+        <div class="logo" aria-hidden="true">🚙</div>
+        <div>
+          <p class="eyebrow">APLICACIÓN MÓVIL · PWA</p>
+          <h1>Consulta de vehículos</h1>
+          <p class="subtitulo">Cliente de la API Java Spring Boot</p>
+        </div>
+      </header>
+
+      <main>
+        <section class="panel" aria-labelledby="titulo-acceso">
+          <div class="seccion-cabecera">
+            <span class="paso">01</span>
+            <h2 id="titulo-acceso">Acceso con JWT</h2>
+          </div>
+          <p class="ayuda">Se utiliza un token obtenido mediante el servicio de autenticación.</p>
+          <form id="formulario" novalidate>
+            <label for="jwt">Token de usuario</label>
+            <div class="fila-token">
+              <input id="jwt" type="password" placeholder="Pegar JWT de Postman" autocapitalize="none" autocomplete="off" spellcheck="false" />
+              <button id="alternarToken" type="button" class="boton-secundario" aria-label="Mostrar token" aria-pressed="false">Mostrar</button>
+            </div>
+            <div class="acciones">
+              <button id="consultar" class="boton-primario" type="submit">Consultar vehículos</button>
+              <button id="borrar" class="boton-discreto" type="button">Borrar token</button>
+            </div>
+          </form>
+          <div id="mensaje" class="mensaje neutro" role="status" aria-live="polite">Listo para consultar.</div>
+          <p class="seguridad">El token permanece en memoria; no se almacena en el dispositivo.</p>
+        </section>
+
+        <section class="panel listado" aria-labelledby="titulo-vehiculos">
+          <div class="seccion-cabecera resultados">
+            <div class="titulo-bloque"><span class="paso">02</span><h2 id="titulo-vehiculos">Vehículos registrados</h2></div>
+            <span id="contador" class="contador">0 vehículos</span>
+          </div>
+          <div id="vehiculos" class="vehiculos">
+            <div class="vacio">No hay información todavía. Se debe realizar una consulta para mostrar vehículos.</div>
+          </div>
+        </section>
+      </main>
+      <footer><span id="conexion">Comprobando conexión…</span> · Datos proporcionados por la API REST</footer>
+    </div>
+  </body>
+</html>

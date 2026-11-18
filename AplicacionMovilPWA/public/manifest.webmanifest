@@ -1,0 +1,16 @@
+{
+  "name": "Consulta de Vehículos - Móvil",
+  "short_name": "Vehículos",
+  "description": "PWA móvil para consultar vehículos de una API REST protegida con JWT.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef3f6",
+  "theme_color": "#103b56",
+  "lang": "es",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

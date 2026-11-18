@@ -1,0 +1,544 @@
+{
+	"info": {
+		"_postman_id": "s11-s15-retos-superdificiles-2026",
+		"name": "Taller - Retos Superdifíciles (S11 a S15)",
+		"description": "Colección completa de pruebas para los Retos Superdifíciles S11 a S15: Historial de precios de vehículos, Panel de incidencias, Reintentos progresivos con backoff, Trazabilidad con X-Correlation-Id y Conciliación manual de ventas.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "pythonUrl",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "javaUrl",
+			"value": "http://127.0.0.1:8081",
+			"type": "string"
+		},
+		{
+			"key": "tokenAdmin",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "tokenOperador",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "vehiculoId",
+			"value": "13",
+			"type": "string"
+		},
+		{
+			"key": "ventaId",
+			"value": "10",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "00 - Autenticación (Login)",
+			"item": [
+				{
+					"name": "Login Admin (Generar Token Automático)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = pm.response.json();",
+									"if (data.access_token) {",
+									"    pm.collectionVariables.set('tokenAdmin', data.access_token);",
+									"    console.log('✅ Token Admin guardado en {{tokenAdmin}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{ "key": "username", "value": "vehiculos-client", "type": "string" },
+								{ "key": "password", "value": "cliente-local-aula-2026-cambiar", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "grant_type", "value": "password", "type": "text" },
+								{ "key": "username", "value": "admin-local", "type": "text" },
+								{ "key": "password", "value": "cambiar-contrasena-aula-2026", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{javaUrl}}/oauth/token",
+							"host": ["{{javaUrl}}"],
+							"path": ["oauth", "token"]
+						}
+					}
+				},
+				{
+					"name": "Login Operador (Generar Token Operador)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = pm.response.json();",
+									"if (data.access_token) {",
+									"    pm.collectionVariables.set('tokenOperador', data.access_token);",
+									"    console.log('✅ Token Operador guardado en {{tokenOperador}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{ "key": "username", "value": "vehiculos-client", "type": "string" },
+								{ "key": "password", "value": "cliente-local-aula-2026-cambiar", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "grant_type", "value": "password", "type": "text" },
+								{ "key": "username", "value": "operador-local", "type": "text" },
+								{ "key": "password", "value": "cambiar-contrasena-aula-2026", "type": "text" }
+							]
+						},
+						"url": {
+							"raw": "{{javaUrl}}/oauth/token",
+							"host": ["{{javaUrl}}"],
+							"path": ["oauth", "token"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "S11 - Historial de Precios de Vehículos",
+			"item": [
+				{
+					"name": "S11-01 [200 OK] Actualizar precio de vehículo (PATCH)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precio\": 18750.00\n}"
+						},
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos/{{vehiculoId}}",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos", "{{vehiculoId}}"]
+						}
+					}
+				},
+				{
+					"name": "S11-02 [200 OK] Consultar historial de precios de vehículo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Historial contiene registros', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(Array.isArray(data)).to.be.true;",
+									"    if (data.length > 0) {",
+									"        pm.expect(data[0]).to.have.property('idVehiculo');",
+									"        pm.expect(data[0]).to.have.property('precioAnterior');",
+									"        pm.expect(data[0]).to.have.property('precioNuevo');",
+									"        pm.expect(data[0]).to.have.property('fecha');",
+									"        pm.expect(data[0]).to.have.property('usuario');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos/{{vehiculoId}}/historial-precios",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos", "{{vehiculoId}}", "historial-precios"]
+						}
+					}
+				},
+				{
+					"name": "S11-03 [401 Unauthorized] Consultar historial sin token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos/{{vehiculoId}}/historial-precios",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos", "{{vehiculoId}}", "historial-precios"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "S12 - Panel de Incidencias Operativas",
+			"item": [
+				{
+					"name": "S12-01 [200 OK] Consultar incidencias operativas",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Estructura de panel de incidencias', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data).to.have.property('usuario');",
+									"    pm.expect(data).to.have.property('totalIncidencias');",
+									"    pm.expect(data).to.have.property('ventasEnRevision');",
+									"    pm.expect(data).to.have.property('notificacionesPendientes');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/incidencias",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "incidencias"]
+						}
+					}
+				},
+				{
+					"name": "S12-02 [401 Unauthorized] Consultar incidencias sin token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"pm.test('Código NO_AUTENTICADO', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data.codigo).to.eql('NO_AUTENTICADO');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/incidencias",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "incidencias"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "S13 - Reintentos Automáticos y Backoff",
+			"item": [
+				{
+					"name": "S13-01 [200 OK] Consultar ventas y verificar campos de reintento",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Campos de reintento presentes', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(Array.isArray(data)).to.be.true;",
+									"    if (data.length > 0) {",
+									"        pm.expect(data[0]).to.have.property('intentos');",
+									"        pm.expect(data[0]).to.have.property('proximoReintentoUTC');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"]
+						}
+					}
+				},
+				{
+					"name": "S13-02 [200 OK] Consultar venta individual para ver backoff",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Venta incluye estado de reintentos', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data).to.have.property('id');",
+									"    pm.expect(data).to.have.property('intentos');",
+									"    pm.expect(data).to.have.property('proximoReintentoUTC');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/{{ventaId}}",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "{{ventaId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "S14 - Trazabilidad y Correlación Distribuida",
+			"item": [
+				{
+					"name": "S14-01 [200 OK] Propagar X-Correlation-Id específico",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Cabecera X-Correlation-Id propagada y devuelta', function () {",
+									"    var headerVal = pm.response.headers.get('X-Correlation-Id');",
+									"    pm.expect(headerVal).to.eql('reto-s14-trace-test-uuid');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [
+							{ "key": "X-Correlation-Id", "value": "reto-s14-trace-test-uuid" }
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"]
+						}
+					}
+				},
+				{
+					"name": "S14-02 [200 OK] Generar X-Correlation-Id automático si no se envía",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Cabecera X-Correlation-Id generada automáticamente', function () {",
+									"    var headerVal = pm.response.headers.get('X-Correlation-Id');",
+									"    pm.expect(headerVal).to.be.ok;",
+									"    pm.expect(headerVal.length).to.be.above(10);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "S15 - Conciliación Manual de Ventas",
+			"item": [
+				{
+					"name": "S15-01 [409 Conflict] Conciliar venta en estado terminal (COMPLETADA)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 409', function () {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"pm.test('Código ESTADO_NO_CONCILIABLE', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data.codigo).to.eql('ESTADO_NO_CONCILIABLE');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "POST",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/{{ventaId}}/conciliar",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "{{ventaId}}", "conciliar"]
+						}
+					}
+				},
+				{
+					"name": "S15-02 [404 Not Found] Conciliar venta inexistente",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"pm.test('Código VENTA_NO_EXISTE', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data.codigo).to.eql('VENTA_NO_EXISTE');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{tokenAdmin}}", "type": "string" }]
+						},
+						"method": "POST",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/9999/conciliar",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "9999", "conciliar"]
+						}
+					}
+				},
+				{
+					"name": "S15-03 [401 Unauthorized] Conciliar venta sin token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"pm.test('Código NO_AUTENTICADO', function () {",
+									"    var data = pm.response.json();",
+									"    pm.expect(data.codigo).to.eql('NO_AUTENTICADO');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas/{{ventaId}}/conciliar",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas", "{{ventaId}}", "conciliar"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

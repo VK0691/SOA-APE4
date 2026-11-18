@@ -1,0 +1,382 @@
+{
+	"info": {
+		"_postman_id": "f01-f05-retos-faciles-2026",
+		"name": "Taller - Retos Fáciles (F01 a F05)",
+		"description": "Colección completa de pruebas para los Retos Fáciles F01 a F05 con pruebas exitosas, negativas, aislamiento por usuario y validaciones para tomar capturas de evidencia.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "pythonUrl",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "javaUrl",
+			"value": "http://127.0.0.1:8081",
+			"type": "string"
+		},
+		{
+			"key": "tokenAdmin",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "compradorId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "ventaId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "00 - Autenticación (Login)",
+			"item": [
+				{
+					"name": "Login Admin (Generar Token Automático)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = pm.response.json();",
+									"if (data.access_token) {",
+									"    pm.collectionVariables.set('tokenAdmin', data.access_token);",
+									"    console.log('✅ Token guardado automáticamente en {{tokenAdmin}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{ "key": "username", "value": "vehiculos-client", "type": "string" },
+								{ "key": "password", "value": "cliente-local-aula-2026-cambiar", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "grant_type", "value": "password", "type": "text" },
+								{ "key": "username", "value": "admin-local", "type": "text" },
+								{ "key": "password", "value": "cambiar-contrasena-aula-2026", "type": "text" }
+							]
+						},
+						"url": "{{javaUrl}}/oauth/token",
+						"description": "Genera el JWT de acceso y lo guarda automáticamente en la variable de colección {{tokenAdmin}}."
+					}
+				}
+			]
+		},
+		{
+			"name": "F01 - Listar Compradores",
+			"item": [
+				{
+					"name": "F01-01 [200] Listar compradores propios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/compradores",
+						"description": "El usuario autenticado obtiene exclusivamente su lista de compradores en formato JSON."
+					}
+				},
+				{
+					"name": "F01-02 [401] Sin Token (Rechazo)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{pythonUrl}}/api/compradores",
+						"description": "Prueba negativa: sin cabecera Authorization debe devolver 401 NO_AUTENTICADO."
+					}
+				}
+			]
+		},
+		{
+			"name": "F02 - Consultar Comprador por ID",
+			"item": [
+				{
+					"name": "F02-01 [200] Consultar comprador existente por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/compradores/{{compradorId}}",
+						"description": "Consulta exitosa de un comprador existente por su ID numérico."
+					}
+				},
+				{
+					"name": "F02-02 [404] Comprador inexistente",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/compradores/99999",
+						"description": "Prueba negativa: ID no registrado debe responder con 404 COMPRADOR_NO_EXISTE."
+					}
+				}
+			]
+		},
+		{
+			"name": "F03 - Listar Ventas Propias Ordenadas",
+			"item": [
+				{
+					"name": "F03-01 [200] Listar ventas propias (Fecha e ID DESC)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas",
+						"description": "Devuelve las ventas del usuario de la más reciente a la más antigua ordenadas por fecha DESC e ID DESC."
+					}
+				},
+				{
+					"name": "F03-02 [401] Listar ventas sin token",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{pythonUrl}}/api/ventas",
+						"description": "Prueba negativa: 401 NO_AUTENTICADO al consultar sin JWT."
+					}
+				},
+				{
+					"name": "F03-03 [200] Consultar venta existente por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas/{{ventaId}}",
+						"description": "Verifica que el endpoint original GET /api/ventas/{id} sigue funcionando sin alteraciones."
+					}
+				}
+			]
+		},
+		{
+			"name": "F04 - Filtrar Ventas por Estado",
+			"item": [
+				{
+					"name": "F04-01 [200] Filtrar por estado COMPLETADA",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?estado=COMPLETADA",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "estado", "value": "COMPLETADA" }
+							]
+						},
+						"description": "Filtra únicamente las ventas en estado COMPLETADA."
+					}
+				},
+				{
+					"name": "F04-02 [200] Filtrar por estado FALLIDA",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?estado=FALLIDA",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "estado", "value": "FALLIDA" }
+							]
+						},
+						"description": "Filtra las ventas en estado FALLIDA."
+					}
+				},
+				{
+					"name": "F04-03 [200] Filtrar estado sin coincidencias (Lista vacía)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?estado=EN_REVISION",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "estado", "value": "EN_REVISION" }
+							]
+						},
+						"description": "Cuando no hay ventas en ese estado responde con lista vacía []."
+					}
+				},
+				{
+					"name": "F04-04 [422] Filtro de estado inválido",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?estado=ESTADO_FALSO",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "estado", "value": "ESTADO_FALSO" }
+							]
+						},
+						"description": "Prueba negativa: estado desconocido devuelve 422 ESTADO_INVALIDO."
+					}
+				}
+			]
+		},
+		{
+			"name": "F05 - Filtrar Vehículos Marca y Disponibilidad (Java)",
+			"item": [
+				{
+					"name": "F05-01 [200] Sin filtros (Todos los vehículos)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{javaUrl}}/api/vehiculos",
+						"description": "Consulta base sin parámetros."
+					}
+				},
+				{
+					"name": "F05-02 [200] Solo filtro de marca",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos?marca=Toyota",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos"],
+							"query": [
+								{ "key": "marca", "value": "Toyota" }
+							]
+						},
+						"description": "Filtra vehículos cuya marca contenga Toyota."
+					}
+				},
+				{
+					"name": "F05-03 [200] Solo filtro de estado",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos?estado=DISPONIBLE",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos"],
+							"query": [
+								{ "key": "estado", "value": "DISPONIBLE" }
+							]
+						},
+						"description": "Filtra vehículos en estado DISPONIBLE."
+					}
+				},
+				{
+					"name": "F05-04 [200] Ambos filtros (Marca + Estado)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos?marca=Toyota&estado=DISPONIBLE",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos"],
+							"query": [
+								{ "key": "marca", "value": "Toyota" },
+								{ "key": "estado", "value": "DISPONIBLE" }
+							]
+						},
+						"description": "Combina ambos filtros: marca Toyota y estado DISPONIBLE."
+					}
+				},
+				{
+					"name": "F05-05 [400] Estado desconocido (Rechazo)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{javaUrl}}/api/vehiculos?estado=CHOCADO",
+							"host": ["{{javaUrl}}"],
+							"path": ["api", "vehiculos"],
+							"query": [
+								{ "key": "estado", "value": "CHOCADO" }
+							]
+						},
+						"description": "Prueba negativa: estado inválido produce 400 Bad Request."
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,53 @@
+/* Contenedor central adaptable a pantallas de escritorio y móviles. */
+.contenedor { width: min(1060px, calc(100% - 28px)); margin: 26px auto; }
+.cabecera { border-left: 5px solid #b50018; padding: 6px 0 16px 18px; }
+.marca-producto { color: #af001c; font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+h1 { font-size: clamp(27px, 4vw, 35px); margin: 7px 0; }
+h2 { margin: 0 0 12px; font-size: 21px; }
+p { line-height: 1.5; }
+.cabecera p { margin: 0; color: #5a6d80; }
+/* Los paneles separan conexión, catálogo y detalles. */
+.panel { background: white; border: 1px solid #d9e1eb; border-radius: 10px;
+  padding: 23px; margin: 18px 0; box-shadow: 0 3px 14px #18364d0a; }
+.ayuda, .nota { color: #586c80; font-size: 14px; }
+.nota { margin-bottom: 0; }
+label { display: block; margin: 15px 0 7px; font-weight: bold; }
+input { display: block; width: 100%; min-width: 0; padding: 11px 12px;
+  border: 1px solid #aebdcc; border-radius: 6px; color: #18344f; background: white; }
+.linea-token { display: flex; gap: 9px; }
+.linea-token input { flex: 1; }
+.acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+button:not(.enlace-id) { border: 1px solid #a80016; border-radius: 6px;
+  padding: 10px 16px; color: white; background: #b50018; font-weight: bold; }
+button.secundario { background: #fff; color: #8f0015; border-color: #bfa2a8; }
+/* Mensajes de respuesta HTTP y fallos, visibles y con contraste. */
+.estado { margin-top: 16px; padding: 11px 13px; border-radius: 6px;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.estado-ok { background: #ecf4fc; border: 1px solid #bdd5e9; }
+.estado-error { background: #fff0ee; color: #923326; border: 1px solid #f2b5aa; }
+.estado strong { white-space: nowrap; }
+/* Tabla con desplazamiento horizontal para teléfonos. */
+.titulo-listado { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.contador { border: 1px solid #d1dbe6; border-radius: 18px; padding: 6px 10px;
+  color: #51647b; white-space: nowrap; font-size: 13px; }
+.tabla-scroll { overflow-x: auto; margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; min-width: 590px; text-align: left; }
+th { background: #f1f4f8; font-size: 14px; }
+th, td { padding: 12px 10px; border-bottom: 1px solid #e5ebf1; }
+tr:hover td { background: #fafcff; }
+.enlace-id { border: 0; padding: 0; background: transparent;
+  color: #075a98; font-weight: bold; text-decoration: underline; }
+.sin-datos { text-align: center; padding: 22px; color: #60758a; }
+/* La selección muestra datos del mismo vehículo sin otra solicitud REST. */
+.detalle { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px; margin: 16px 0 0; }
+.detalle div { background: #f2f6fb; border-radius: 7px; padding: 14px; }
+.detalle dt { font-size: 13px; color: #5a7289; margin-bottom: 5px; }
+.detalle dd { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
+code { background: #f1f3f6; padding: 2px 4px; border-radius: 3px; }
+@media (max-width: 620px) {
+  .panel { padding: 16px; }
+  .linea-token { flex-wrap: wrap; }
+  .linea-token input { flex-basis: 100%; }
+  .estado { flex-direction: column; align-items: flex-start; }
+}

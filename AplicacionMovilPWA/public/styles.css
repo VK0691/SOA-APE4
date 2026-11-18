@@ -1,0 +1,56 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #15354a;
+  background: #eef3f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: progress; opacity: .60; }
+button:focus-visible, input:focus-visible { outline: 3px solid #e7ae47; outline-offset: 3px; }
+.app { max-width: 720px; margin: 0 auto; padding: 20px 16px max(30px, env(safe-area-inset-bottom)); }
+.encabezado { display: flex; align-items: center; gap: 13px; padding: 12px 2px 24px; }
+.logo { display: grid; place-items: center; flex: 0 0 56px; height: 56px; border-radius: 18px; font-size: 28px; background: #103b56; box-shadow: 0 4px 14px #103b5624; }
+.eyebrow { font-size: 11px; letter-spacing: .12em; font-weight: 800; color: #38778c; margin: 0 0 4px; }
+h1 { font-size: clamp(22px, 5vw, 29px); line-height: 1.15; margin: 0; }
+.subtitulo { margin: 6px 0 0; color: #5f7582; font-size: 13px; }
+.panel { padding: 19px; margin-bottom: 15px; border-radius: 17px; background: #fff; border: 1px solid #dbe5e9; box-shadow: 0 5px 20px #163b5310; }
+.seccion-cabecera { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.paso { display: grid; place-items: center; flex: 0 0 31px; height: 31px; border-radius: 10px; background: #e1f0f2; color: #0c6a73; font-size: 12px; font-weight: 900; }
+h2 { margin: 0; font-size: 18px; }
+.ayuda { color: #617787; font-size: 13px; line-height: 1.5; margin: 0 0 15px; }
+label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+.fila-token { display: flex; gap: 8px; }
+input { width: 100%; min-width: 0; flex: 1; border: 1px solid #becdd5; padding: 12px; border-radius: 11px; background: #fcfeff; color: #15354a; }
+button { border-radius: 11px; min-height: 43px; padding: 10px 14px; font-weight: 750; border: 1px solid transparent; }
+.boton-primario { background: #10597b; color: #fff; flex: 1; }
+.boton-primario:hover { background: #0c4764; }
+.boton-secundario { border-color: #b5cbd4; background: #f2f8fa; color: #22516b; }
+.boton-discreto { background: transparent; border-color: #cedce3; color: #486575; }
+.acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.mensaje { padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; margin-top: 14px; border: 1px solid; }
+.mensaje.neutro { color: #47616f; background: #f2f6f9; border-color: #d6e2e8; }
+.mensaje.exito { color: #176245; background: #edf9f2; border-color: #bce6cd; }
+.mensaje.error { color: #9a2f2f; background: #fff2f0; border-color: #f2c4bf; }
+.seguridad { color: #758895; font-size: 11px; margin: 11px 0 0; }
+.resultados { justify-content: space-between; flex-wrap: wrap; }
+.titulo-bloque { display: flex; align-items: center; gap: 10px; }
+.contador { background: #ecf2f8; color: #24506b; border-radius: 999px; font-weight: 800; font-size: 12px; padding: 7px 11px; }
+.vehiculos { display: grid; gap: 10px; }
+.vacio { padding: 25px 10px; text-align: center; color: #7a8e9b; font-size: 13px; line-height: 1.5; }
+.vehiculo { border: 1px solid #dfe8ee; padding: 15px; border-radius: 13px; background: #fcfeff; }
+.vehiculo-cabecera { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.vehiculo-titulo { font-size: 16px; font-weight: 850; margin: 0; }
+.vehiculo-id { display: block; margin-top: 4px; font-size: 12px; color: #71889a; }
+.estado { font-size: 10px; font-weight: 900; letter-spacing: .02em; border-radius: 999px; padding: 7px 9px; white-space: nowrap; color: #2f5a6b; background: #e9f3f8; }
+.estado.disponible { color: #157344; background: #e3f7eb; }
+.estado.vendido { color: #97521b; background: #fff1df; }
+.datos { margin-top: 14px; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.dato-etiqueta { display: block; color: #698091; font-size: 11px; margin-bottom: 3px; }
+.dato-valor { display: block; font-size: 14px; overflow-wrap: anywhere; font-weight: 750; }
+.dato-precio .dato-valor { font-size: 16px; color: #0e6581; }
+footer { text-align: center; color: #7c8f9b; line-height: 1.5; font-size: 11px; margin: 22px 0; }
+@media (max-width: 390px) { .app { padding: 13px 10px; } .panel { padding: 15px; } .acciones button { flex-basis: 100%; } .encabezado .logo { flex-basis: 50px; height: 50px; } }

@@ -1,0 +1,571 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Venta Vehiculos API - Seguridad y Reservas",
+		"description": "Colección completa para pruebas de venta-vehiculos-api_security con autenticación OAuth2 (JWT) y clave de integración interna.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "serviceKey",
+			"value": "ventas-java-python-aula-2026-key-9F2uN4bS6x8Q1m",
+			"type": "string"
+		},
+		{
+			"key": "vehiculoId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "reservaId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "01 - Autenticación",
+			"item": [
+				{
+					"name": "Obtener Token (OAuth2 Password)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.access_token) {",
+									"    pm.collectionVariables.set('token', jsonData.access_token);",
+									"    console.log('Token guardado automáticamente en {{token}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "vehiculos-client",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "cliente-local-aula-2026-cambiar",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "password",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "admin-local",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "cambiar-contrasena-aula-2026",
+									"type": "text"
+								},
+								{
+									"key": "idapli",
+									"value": "92",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/oauth/token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"oauth",
+								"token"
+							]
+						},
+						"description": "Obtiene un token JWT. Un script automático guarda el access_token en la variable {{token}} para las demás peticiones."
+					},
+					"response": []
+				},
+				{
+					"name": "Consultar Identidad Actual",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/identidad",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"identidad"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "02 - Vehículos (Requiere Bearer Token)",
+			"item": [
+				{
+					"name": "Listar Vehículos",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filtrar Vehículos por Marca",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos?marca=Toyota",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos"
+							],
+							"query": [
+								{
+									"key": "marca",
+									"value": "Toyota"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Vehículo por ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos/{{vehiculoId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos",
+								"{{vehiculoId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Vehículo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.idVehiculo) {",
+									"    pm.collectionVariables.set('vehiculoId', jsonData.idVehiculo);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Yaris\",\n  \"placa\": \"PBA-9876\",\n  \"chasis\": \"9BWCA41JX8P123456\",\n  \"anio\": 2023,\n  \"color\": \"Rojo\",\n  \"precio\": 17500.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Vehículo Completo (PUT)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Yaris Premium\",\n  \"placa\": \"PBA-9876\",\n  \"chasis\": \"9BWCA41JX8P123456\",\n  \"anio\": 2023,\n  \"color\": \"Negro\",\n  \"precio\": 18200.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos/{{vehiculoId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos",
+								"{{vehiculoId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Precio (PATCH application/merge-patch+json)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/merge-patch+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precio\": 16900.50\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos/{{vehiculoId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos",
+								"{{vehiculoId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Vehículo (DELETE)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos/{{vehiculoId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos",
+								"{{vehiculoId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03 - Reservas (Requiere Cabecera X-Service-Key)",
+			"item": [
+				{
+					"name": "Crear Reserva de Vehículo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.collectionVariables.set('reservaId', jsonData.id);",
+									"    console.log('Reserva ID guardada en {{reservaId}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Service-Key",
+								"value": "{{serviceKey}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"operacionId\": \"OP-2026-001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehiculos/{{vehiculoId}}/reservas",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehiculos",
+								"{{vehiculoId}}",
+								"reservas"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Reserva por ID",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Service-Key",
+								"value": "{{serviceKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reservas/{{reservaId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reservas",
+								"{{reservaId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Reserva por Operación ID",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Service-Key",
+								"value": "{{serviceKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reservas?operacionId=OP-2026-001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reservas"
+							],
+							"query": [
+								{
+									"key": "operacionId",
+									"value": "OP-2026-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Confirmar Reserva",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-Service-Key",
+								"value": "{{serviceKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reservas/{{reservaId}}/confirmacion",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reservas",
+								"{{reservaId}}",
+								"confirmacion"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Liberar Reserva (DELETE)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Service-Key",
+								"value": "{{serviceKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reservas/{{reservaId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reservas",
+								"{{reservaId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

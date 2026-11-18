@@ -1,0 +1,418 @@
+{
+	"info": {
+		"_postman_id": "d06-d10-retos-dificiles-2026",
+		"name": "Taller - Retos Difíciles (D06 a D10)",
+		"description": "Colección completa de pruebas para los Retos Difíciles D06 a D10 con pruebas de paginación, búsqueda segura, edición inmutable, resumen numérico y comprobante de venta para tomar capturas de evidencia.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "pythonUrl",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "javaUrl",
+			"value": "http://127.0.0.1:8081",
+			"type": "string"
+		},
+		{
+			"key": "tokenAdmin",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "compradorId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "ventaCompletadaId",
+			"value": "3",
+			"type": "string"
+		},
+		{
+			"key": "ventaFallidaId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "00 - Autenticación (Login)",
+			"item": [
+				{
+					"name": "Login Admin (Generar Token Automático)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = pm.response.json();",
+									"if (data.access_token) {",
+									"    pm.collectionVariables.set('tokenAdmin', data.access_token);",
+									"    console.log('✅ Token guardado en {{tokenAdmin}}');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{ "key": "username", "value": "vehiculos-client", "type": "string" },
+								{ "key": "password", "value": "cliente-local-aula-2026-cambiar", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "grant_type", "value": "password", "type": "text" },
+								{ "key": "username", "value": "admin-local", "type": "text" },
+								{ "key": "password", "value": "cambiar-contrasena-aula-2026", "type": "text" }
+							]
+						},
+						"url": "{{javaUrl}}/oauth/token",
+						"description": "Genera el JWT de acceso y lo guarda automáticamente en la variable de colección {{tokenAdmin}}."
+					}
+				}
+			]
+		},
+		{
+			"name": "D06 - Paginación Estable y Segura de Ventas",
+			"item": [
+				{
+					"name": "D06-01 [200] Página 1 (limit=2, offset=0)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?limit=2&offset=0",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "limit", "value": "2" },
+								{ "key": "offset", "value": "0" }
+							]
+						},
+						"description": "Retorna la primera página de ventas con formato paginado: items, total, limit, offset."
+					}
+				},
+				{
+					"name": "D06-02 [200] Página 2 (limit=2, offset=2)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?limit=2&offset=2",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "limit", "value": "2" },
+								{ "key": "offset", "value": "2" }
+							]
+						},
+						"description": "Retorna la segunda página. Demuestra que no hay registros duplicados respecto a la página 1."
+					}
+				},
+				{
+					"name": "D06-03 [422] Rechazo por Limit > 50",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?limit=100",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "limit", "value": "100" }
+							]
+						},
+						"description": "Prueba negativa: limit mayor a 50 es rechazado con 422 LIMITE_INVALIDO."
+					}
+				},
+				{
+					"name": "D06-04 [422] Rechazo por Offset Negativo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/ventas?offset=-1",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "ventas"],
+							"query": [
+								{ "key": "offset", "value": "-1" }
+							]
+						},
+						"description": "Prueba negativa: offset menor a 0 es rechazado con 422 OFFSET_INVALIDO."
+					}
+				}
+			]
+		},
+		{
+			"name": "D07 - Buscar Compradores por Nombre o Documento",
+			"item": [
+				{
+					"name": "D07-01 [200] Coincidencia por Nombre",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/compradores?buscar=Test",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "compradores"],
+							"query": [
+								{ "key": "buscar", "value": "Test" }
+							]
+						},
+						"description": "Filtra compradores cuyo nombre contenga 'Test'."
+					}
+				},
+				{
+					"name": "D07-02 [200] Coincidencia por Documento",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/compradores?buscar=1234",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "compradores"],
+							"query": [
+								{ "key": "buscar", "value": "1234" }
+							]
+						},
+						"description": "Filtra compradores cuyo documento contenga '1234'."
+					}
+				},
+				{
+					"name": "D07-03 [200] Sin Coincidencias (Lista Vacía)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/compradores?buscar=TEXTO_INEXISTENTE_XYZ",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "compradores"],
+							"query": [
+								{ "key": "buscar", "value": "TEXTO_INEXISTENTE_XYZ" }
+							]
+						},
+						"description": "Texto sin coincidencias devuelve lista vacía []."
+					}
+				},
+				{
+					"name": "D07-04 [200] Búsqueda Segura (Inyección SQL Controlada)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": {
+							"raw": "{{pythonUrl}}/api/compradores?buscar=' OR '1'='1",
+							"host": ["{{pythonUrl}}"],
+							"path": ["api", "compradores"],
+							"query": [
+								{ "key": "buscar", "value": "' OR '1'='1" }
+							]
+						},
+						"description": "Verifica que caracteres de escape e inyección SQL no alteran la consulta gracias al ORM parametrizado."
+					}
+				}
+			]
+		},
+		{
+			"name": "D08 - Actualizar Comprador (Documento Inmutable)",
+			"item": [
+				{
+					"name": "D08-01 [200] Actualizar Nombre y Correo Exitoso",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Pedro Actualizado\",\n  \"correo\": \"pedro.actualizado@correo.com\"\n}"
+						},
+						"url": "{{pythonUrl}}/api/compradores/{{compradorId}}",
+						"description": "Modifica únicamente nombre y correo. Comprueba que el documento se mantiene inmutable."
+					}
+				},
+				{
+					"name": "D08-02 [422] Rechazo por Correo Inválido",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Nombre Correcto\",\n  \"correo\": \"correo_invalido_sin_arroba\"\n}"
+						},
+						"url": "{{pythonUrl}}/api/compradores/{{compradorId}}",
+						"description": "Prueba negativa: formato de correo incorrecto genera 422 VALIDACION."
+					}
+				},
+				{
+					"name": "D08-03 [404] Comprador Inexistente",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Fantasma\",\n  \"correo\": \"fantasma@correo.com\"\n}"
+						},
+						"url": "{{pythonUrl}}/api/compradores/99999",
+						"description": "Prueba negativa: comprador que no existe devuelve 404 COMPRADOR_NO_EXISTE."
+					}
+				}
+			]
+		},
+		{
+			"name": "D09 - Resumen Numérico de Ventas",
+			"item": [
+				{
+					"name": "D09-01 [200] Resumen de Ventas del Usuario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas/resumen",
+						"description": "Calcula cantidad de ventas COMPLETADAS, suma de precio_acordado y conteos de otros estados para el usuario autenticado."
+					}
+				},
+				{
+					"name": "D09-02 [401] Resumen sin Token",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{pythonUrl}}/api/ventas/resumen",
+						"description": "Prueba negativa: sin cabecera Authorization responde con 401 NO_AUTENTICADO."
+					}
+				}
+			]
+		},
+		{
+			"name": "D10 - Comprobante JSON de Venta Confirmada",
+			"item": [
+				{
+					"name": "D10-01 [200] Comprobante Venta COMPLETADA",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas/{{ventaCompletadaId}}/comprobante",
+						"description": "Emite el comprobante oficial con datos del comprador, vehículo, precio confirmado y fecha para una venta en estado COMPLETADA."
+					}
+				},
+				{
+					"name": "D10-02 [409] Rechazo Venta FALLIDA / PENDIENTE",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas/{{ventaFallidaId}}/comprobante",
+						"description": "Prueba negativa: no se puede emitir comprobante si la venta no está COMPLETADA (retorna 409 VENTA_NO_COMPLETADA)."
+					}
+				},
+				{
+					"name": "D10-03 [404] Venta Inexistente",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tokenAdmin}}"
+							}
+						],
+						"url": "{{pythonUrl}}/api/ventas/99999/comprobante",
+						"description": "Prueba negativa: venta que no existe devuelve 404 VENTA_NO_EXISTE."
+					}
+				}
+			]
+		}
+	]
+}
+
