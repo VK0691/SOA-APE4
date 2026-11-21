@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\wilso\\Patrones de Software (Ejercicios)\\SOA_Venta_API\\SOA_Venta_API\\SOA_Venta_API.csproj",
+      "projectUniqueName": "C:\\Users\\wilso\\Documents\\UMaterias\\Quinto Semestre\\APLICACIONES ORIENTADAS A SERVICIOS\\SEGUNDO PARCIAL\\balanceador\\SOA_Venta_API\\SOA_Venta_API\\SOA_Venta_API.csproj",
       "projectName": "SOA_Venta_API",
-      "projectPath": "C:\\Users\\wilso\\Patrones de Software (Ejercicios)\\SOA_Venta_API\\SOA_Venta_API\\SOA_Venta_API.csproj",
+      "projectPath": "C:\\Users\\wilso\\Documents\\UMaterias\\Quinto Semestre\\APLICACIONES ORIENTADAS A SERVICIOS\\SEGUNDO PARCIAL\\balanceador\\SOA_Venta_API\\SOA_Venta_API\\SOA_Venta_API.csproj",
       "packagesPath": "C:\\Users\\wilso\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\wilso\\Patrones de Software (Ejercicios)\\SOA_Venta_API\\SOA_Venta_API\\obj\\",
+      "outputPath": "C:\\Users\\wilso\\Documents\\UMaterias\\Quinto Semestre\\APLICACIONES ORIENTADAS A SERVICIOS\\SEGUNDO PARCIAL\\balanceador\\SOA_Venta_API\\SOA_Venta_API\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

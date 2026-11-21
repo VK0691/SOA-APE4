@@ -1,6 +1,9 @@
 package ec.edu.com;
 
 import java.math.BigDecimal;
+import java.util.List;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
@@ -10,47 +13,98 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public final class VehiculosApp extends Application {
+
     private final VehiculosApiClient api = new VehiculosApiClient();
+
     private final PasswordField txtToken = new PasswordField();
     private final Button btnConsultar = new Button("Consultar");
     private final Label lblEstado = new Label("Listo");
     private final Label lblTotal = new Label("Total de vehiculos: 0");
-    private final TableView<Vehiculo> tabla = new TableView<>();
+    private final TableView<Vehiculo> tablaVehiculos = new TableView<>();
+
+    // Tabla de notificaciones (polling automatico)
+    private final TableView<Notificacion> tablaNotificaciones = new TableView<>();
+    private final Label lblNotificaciones = new Label("Notificaciones: esperando...");
+    private final Label lblPolling = new Label("Polling: inactivo");
+    private Timeline pollingTimeline;
 
     @Override
     public void start(Stage ventana) {
-        Label titulo = new Label("Consulta de vehiculos Registrados");
-        txtToken.setPromptText("aki va el JWT");
+        // ---- Panel superior: token + boton ----
+        Label lblTitulo = new Label("NGINX :8090  |  Spring Boot :8081/:8082  |  Notificaciones :8083");
+
+        txtToken.setPromptText("Pegar JWT de Postman (obligatorio para vehiculos)");
         txtToken.setMaxWidth(Double.MAX_VALUE);
 
-        configurarColumnas();
-
         txtToken.textProperty().addListener((obs, antiguo, nuevo) -> {
-            tabla.getItems().clear();
+            tablaVehiculos.getItems().clear();
             lblTotal.setText("Total de vehiculos: 0");
-            lblEstado.setText("Listo");
+            lblEstado.setText("Token modificado — vuelva a consultar");
         });
 
-        btnConsultar.setOnAction(e -> consultar());
+        btnConsultar.setOnAction(e -> consultarVehiculos());
+        HBox barraToken = new HBox(8, txtToken, btnConsultar);
+        HBox.setHgrow(txtToken, Priority.ALWAYS);
 
-        VBox.setVgrow(tabla, Priority.ALWAYS);
-        VBox contenido = new VBox(12, titulo, txtToken, btnConsultar, tabla, lblTotal, lblEstado);
-        contenido.setPadding(new Insets(12));
-        contenido.setStyle("-fx-background-color: white;");
+        VBox.setVgrow(tablaVehiculos, Priority.ALWAYS);
+        VBox panelVehiculos = new VBox(8,
+                new Label("Catalogo de vehiculos (via NGINX → Spring Boot):"),
+                tablaVehiculos, lblTotal, lblEstado);
+        panelVehiculos.setPadding(new Insets(8));
+        configurarColumnasVehiculos();
 
-        ventana.setScene(new Scene(contenido, 1024, 650));
-        ventana.setTitle("Consulta Vehiculos");
+        // ---- Panel inferior: notificaciones ----
+        Button btnIniciarPolling = new Button("Iniciar polling");
+        Button btnDetenerPolling = new Button("Detener");
+        btnDetenerPolling.setDisable(true);
+
+        btnIniciarPolling.setOnAction(e -> {
+            iniciarPolling();
+            btnIniciarPolling.setDisable(true);
+            btnDetenerPolling.setDisable(false);
+        });
+        btnDetenerPolling.setOnAction(e -> {
+            detenerPolling();
+            btnIniciarPolling.setDisable(false);
+            btnDetenerPolling.setDisable(true);
+        });
+
+        HBox barraPolling = new HBox(8, lblPolling, btnIniciarPolling, btnDetenerPolling);
+        VBox.setVgrow(tablaNotificaciones, Priority.ALWAYS);
+        VBox panelNotificaciones = new VBox(8,
+                new Label("Notificaciones de ventas (GET /api/notificaciones cada 4s):"),
+                barraPolling,
+                tablaNotificaciones,
+                lblNotificaciones);
+        panelNotificaciones.setPadding(new Insets(8));
+        configurarColumnasNotificaciones();
+
+        // ---- Layout principal ----
+        SplitPane splitPane = new SplitPane(panelVehiculos, panelNotificaciones);
+        splitPane.setDividerPositions(0.6);
+        SplitPane.setResizableWithParent(panelVehiculos, true);
+
+        VBox raiz = new VBox(8, lblTitulo, barraToken, splitPane);
+        raiz.setPadding(new Insets(12));
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
+
+        ventana.setScene(new Scene(raiz, 1200, 700));
+        ventana.setTitle("JavaFX — Vehiculos y Notificaciones de Ventas");
+        ventana.setOnCloseRequest(e -> detenerPolling());
         ventana.show();
     }
 
-    private void configurarColumnas() {
+    private void configurarColumnasVehiculos() {
         TableColumn<Vehiculo, Integer> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().idVehiculo()));
 
@@ -66,7 +120,7 @@ public final class VehiculosApp extends Application {
         TableColumn<Vehiculo, String> colChasis = new TableColumn<>("Chasis");
         colChasis.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().chasis()));
 
-        TableColumn<Vehiculo, Integer> colAnio = new TableColumn<>("Anio");
+        TableColumn<Vehiculo, Integer> colAnio = new TableColumn<>("Año");
         colAnio.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().anio()));
 
         TableColumn<Vehiculo, String> colColor = new TableColumn<>("Color");
@@ -78,50 +132,114 @@ public final class VehiculosApp extends Application {
         TableColumn<Vehiculo, String> colEstado = new TableColumn<>("Estado");
         colEstado.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().estado()));
 
-        tabla.getColumns().addAll(colId, colMarca, colModelo, colPlaca, colChasis, colAnio, colColor, colPrecio, colEstado);
+        tablaVehiculos.getColumns().addAll(
+                colId, colMarca, colModelo, colPlaca, colChasis, colAnio, colColor, colPrecio, colEstado);
     }
 
-    private void consultar() {
-        String jwt = txtToken.getText();
+    private void configurarColumnasNotificaciones() {
+        TableColumn<Notificacion, String> colVenta = new TableColumn<>("Venta ID");
+        colVenta.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().ventaId() != null ? String.valueOf(c.getValue().ventaId()) : "—"));
 
+        TableColumn<Notificacion, String> colVehiculo = new TableColumn<>("Vehiculo ID");
+        colVehiculo.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().vehiculoId() != null ? String.valueOf(c.getValue().vehiculoId()) : "—"));
+
+        TableColumn<Notificacion, String> colTipo = new TableColumn<>("Tipo");
+        colTipo.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().tipo() != null ? c.getValue().tipo() : "—"));
+
+        TableColumn<Notificacion, String> colPrecio = new TableColumn<>("Precio");
+        colPrecio.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().precio() != null
+                        ? (c.getValue().moneda() != null ? c.getValue().moneda() + " " : "") + c.getValue().precio()
+                        : "—"));
+
+        TableColumn<Notificacion, String> colEvento = new TableColumn<>("Evento ID");
+        colEvento.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().eventoId() != null ? c.getValue().eventoId() : "—"));
+        colEvento.setPrefWidth(220);
+
+        TableColumn<Notificacion, String> colFecha = new TableColumn<>("Fecha UTC");
+        colFecha.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().fecha() != null ? c.getValue().fecha() : "—"));
+        colFecha.setPrefWidth(180);
+
+        tablaNotificaciones.getColumns().addAll(
+                colVenta, colVehiculo, colTipo, colPrecio, colEvento, colFecha);
+    }
+
+    private void consultarVehiculos() {
+        String jwt = txtToken.getText();
         if (jwt == null || jwt.trim().isEmpty()) {
             lblEstado.setText("Validacion: Debe ingresar un token JWT");
             return;
         }
 
         btnConsultar.setDisable(true);
-        lblEstado.setText("Consultando...");
+        lblEstado.setText("Consultando via NGINX...");
 
-        api.consultarVehiculos(jwt.trim()).thenAccept(resultado -> {
-            Platform.runLater(() -> {
-                btnConsultar.setDisable(false);
-                int codigo = resultado.codigoHttp();
-
-                if (codigo == 200) {
-                    tabla.getItems().setAll(resultado.vehiculos());
-                    lblTotal.setText("Total de vehiculos: " + resultado.vehiculos().size());
-                    lblEstado.setText("Consulta exitosa (200 OK)");
-                } else if (codigo == 401) {
-                    tabla.getItems().clear();
-                    lblTotal.setText("Total de vehiculos: 0");
-                    lblEstado.setText("Error 401: Token invalido o expirado");
-                } else if (codigo == 403) {
-                    tabla.getItems().clear();
-                    lblTotal.setText("Total de vehiculos: 0");
-                    lblEstado.setText("Error 403: Sin permisos");
-                } else {
-                    tabla.getItems().clear();
-                    lblTotal.setText("Total de vehiculos: 0");
-                    lblEstado.setText("Error HTTP " + codigo);
-                }
-            });
-        }).exceptionally(ex -> {
-            Platform.runLater(() -> {
-                btnConsultar.setDisable(false);
-                tabla.getItems().clear();
+        api.consultarVehiculos(jwt.trim()).thenAccept(resultado -> Platform.runLater(() -> {
+            btnConsultar.setDisable(false);
+            int codigo = resultado.codigoHttp();
+            if (codigo == 200) {
+                tablaVehiculos.getItems().setAll(resultado.vehiculos());
+                lblTotal.setText("Total de vehiculos: " + resultado.vehiculos().size());
+                lblEstado.setText("HTTP 200: Consulta exitosa via NGINX :8090");
+            } else if (codigo == 401) {
+                tablaVehiculos.getItems().clear();
                 lblTotal.setText("Total de vehiculos: 0");
-                lblEstado.setText("Error de conexion con el servidor");
+                lblEstado.setText("HTTP 401: Token invalido o expirado");
+            } else if (codigo == 403) {
+                tablaVehiculos.getItems().clear();
+                lblTotal.setText("Total de vehiculos: 0");
+                lblEstado.setText("HTTP 403: Sin permisos para consultar");
+            } else {
+                tablaVehiculos.getItems().clear();
+                lblTotal.setText("Total de vehiculos: 0");
+                lblEstado.setText("HTTP " + codigo + ": Error en la consulta");
+            }
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> {
+                btnConsultar.setDisable(false);
+                tablaVehiculos.getItems().clear();
+                lblTotal.setText("Total de vehiculos: 0");
+                lblEstado.setText("Error de conexion con NGINX");
             });
+            return null;
+        });
+    }
+
+    private void iniciarPolling() {
+        pollingTimeline = new Timeline(new KeyFrame(Duration.seconds(4), e -> pollNotificaciones()));
+        pollingTimeline.setCycleCount(Timeline.INDEFINITE);
+        pollingTimeline.play();
+        lblPolling.setText("Polling: activo (cada 4s)");
+        // Primera llamada inmediata
+        pollNotificaciones();
+    }
+
+    private void detenerPolling() {
+        if (pollingTimeline != null) {
+            pollingTimeline.stop();
+            pollingTimeline = null;
+        }
+        lblPolling.setText("Polling: detenido");
+    }
+
+    private void pollNotificaciones() {
+        api.consultarNotificaciones().thenAccept(resultado -> Platform.runLater(() -> {
+            int codigo = resultado.codigoHttp();
+            if (codigo == 200) {
+                List<Notificacion> nuevas = resultado.notificaciones();
+                tablaNotificaciones.getItems().setAll(nuevas);
+                lblNotificaciones.setText("HTTP 200: " + nuevas.size() + " notificacion(es) recibidas");
+            } else {
+                lblNotificaciones.setText("HTTP " + codigo + ": Sin datos de notificaciones");
+            }
+        })).exceptionally(ex -> {
+            Platform.runLater(() ->
+                lblNotificaciones.setText("Error de conexion con notificaciones-service"));
             return null;
         });
     }

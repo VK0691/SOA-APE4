@@ -15,3 +15,20 @@ C:\Users\wilso\Patrones de Software (Ejercicios)\SOA_Venta_API\SOA_Venta_API\obj
 C:\Users\wilso\Patrones de Software (Ejercicios)\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.genruntimeconfig.cache
 C:\Users\wilso\Patrones de Software (Ejercicios)\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\ref\SOA_Venta_API.dll
 C:\Users\wilso\Patrones de Software (Ejercicios)\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Vent.507AF783.Up2Date
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\bin\Debug\net10.0-windows\SOA_Venta_API.exe
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\bin\Debug\net10.0-windows\SOA_Venta_API.deps.json
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\bin\Debug\net10.0-windows\SOA_Venta_API.runtimeconfig.json
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\bin\Debug\net10.0-windows\SOA_Venta_API.dll
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\bin\Debug\net10.0-windows\SOA_Venta_API.pdb
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.Form1.resources
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.csproj.GenerateResource.cache
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.AssemblyInfoInputs.cache
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.AssemblyInfo.cs
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.csproj.CoreCompileInputs.cache
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.sourcelink.json
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.dll
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\refint\SOA_Venta_API.dll
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.pdb
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\SOA_Venta_API.genruntimeconfig.cache
+C:\Users\wilso\Documents\UMaterias\Quinto Semestre\APLICACIONES ORIENTADAS A SERVICIOS\SEGUNDO PARCIAL\balanceador\SOA_Venta_API\SOA_Venta_API\obj\Debug\net10.0-windows\ref\SOA_Venta_API.dll

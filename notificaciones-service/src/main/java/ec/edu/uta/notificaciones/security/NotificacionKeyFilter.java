@@ -46,7 +46,7 @@ public class NotificacionKeyFilter extends OncePerRequestFilter {
         }
 
         String path = req.getRequestURI();
-        if (path.startsWith("/error")) {
+        if (path.startsWith("/error") || path.startsWith("/actuator") || ("GET".equalsIgnoreCase(req.getMethod()) && path.startsWith("/api/notificaciones"))) {
             chain.doFilter(req, res);
             return;
         }

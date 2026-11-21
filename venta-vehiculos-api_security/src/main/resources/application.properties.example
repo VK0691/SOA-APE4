@@ -1,0 +1,32 @@
+# Plantilla de configuracion - venta-vehiculos-api_security (Spring Boot)
+# Copie a application.properties y configure sus credenciales locales antes de ejecutar.
+
+server.port=8081
+server.address=127.0.0.1
+
+spring.datasource.url=jdbc:mysql://127.0.0.1:3306/venta_vehiculos?useSSL=false&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=
+
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.open-in-view=false
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MariaDBDialect
+
+# Seguridad OAuth2 / JWT (reemplazar en entorno local)
+app.security.jwt-secret=<CONFIGURAR_SECRETO_JWT_BASE64_MIN_256_BITS>
+app.security.access-token-minutes=30
+app.security.refresh-token-minutes=1440
+app.security.client-id=<CONFIGURAR_CLIENT_ID>
+app.security.client-secret=<CONFIGURAR_CLIENT_SECRET>
+app.security.ventas-key=<CONFIGURAR_CLAVE_SERVICIO_VENTAS_MIN_32_CHARS>
+
+# Integracion con servicio de notificaciones
+servicios.notificaciones.url=http://127.0.0.1:8083
+servicios.notificaciones.key=<CONFIGURAR_CLAVE_NOTIFICACIONES_MIN_32_CHARS>
+servicios.notificaciones.destinatario=notificaciones@ejemplo.com
+
+# Usuario inicial bootstrap (cambiar en local)
+app.bootstrap.user=admin-local
+app.bootstrap.password=<CONFIGURAR_CLAVE_ADMIN>
+app.bootstrap.role=ADMIN
