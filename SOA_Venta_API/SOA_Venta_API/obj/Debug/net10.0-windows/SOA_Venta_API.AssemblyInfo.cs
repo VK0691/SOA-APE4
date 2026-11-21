@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SOA_Venta_API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b765583491c6ca0bca64b4bc13f61cfff14a455")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b505cb1ee430177e55d22b95e3b10d2f6ac1c034")]
 [assembly: System.Reflection.AssemblyProductAttribute("SOA_Venta_API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SOA_Venta_API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

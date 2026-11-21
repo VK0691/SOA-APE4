@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -41,7 +42,10 @@ namespace SOA_Venta_API
                 string headerVal = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
                     ? token.Substring(7).Trim()
                     : token.Trim();
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", headerVal);
+
+                // Evita excepcion local si el usuario pega saltos de linea o caracteres no ASCII
+                headerVal = headerVal.Replace("\r", "").Replace("\n", "").Trim();
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {headerVal}");
             }
 
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -76,14 +80,20 @@ namespace SOA_Venta_API
                 }
                 else
                 {
-                    result.Message = $"HTTP {result.StatusCode} {response.ReasonPhrase}: {result.RawJson}";
+                    result.Message = FormatearErrorHttp(result.StatusCode, result.RawJson);
                 }
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
                 result.StatusCode = 0;
                 result.IsSuccess = false;
-                result.Message = $"Error de conexion: {ex.Message}";
+                result.Message = "Error de conexion: no se pudo contactar con NGINX (http://127.0.0.1:8090). Verifique que los servicios esten iniciados.";
+            }
+            catch (TaskCanceledException)
+            {
+                result.StatusCode = 0;
+                result.IsSuccess = false;
+                result.Message = "Tiempo de espera agotado: el servidor tardo demasiado en responder.";
             }
             catch (Exception ex)
             {
@@ -92,6 +102,81 @@ namespace SOA_Venta_API
                 result.Message = $"Error inesperado: {ex.Message}";
             }
             return result;
+        }
+
+        private static string FormatearErrorHttp(int statusCode, string rawJson)
+        {
+            string detalle = ExtraerDetalleJson(rawJson);
+
+            string baseMsg = statusCode switch
+            {
+                400 => "HTTP 400 (Datos invalidos): verifique los campos ingresados.",
+                401 => "HTTP 401 (No autenticado): el token JWT es invalido, esta incompleto o ya expiro.",
+                403 => "HTTP 403 (Sin permisos): su rol no esta autorizado para realizar esta operacion.",
+                404 => "HTTP 404 (No encontrado): el recurso o ruta solicitada no existe.",
+                409 => "HTTP 409 (Conflicto): ya existe un registro con esa placa, chasis o documento.",
+                422 => "HTTP 422 (Validacion rechazada): uno o mas campos no cumplen el formato exigido.",
+                500 => "HTTP 500 (Error interno): fallo en el servicio backend o base de datos.",
+                502 => "HTTP 502 (Servicio no disponible): NGINX no pudo conectar con el servicio backend.",
+                503 => "HTTP 503 (Servicio no disponible): el backend esta temporalmente caido.",
+                _ => $"HTTP {statusCode}: la operacion no pudo completarse."
+            };
+
+            return string.IsNullOrWhiteSpace(detalle) ? baseMsg : $"{baseMsg} Detalle: {detalle}";
+        }
+
+        private static string ExtraerDetalleJson(string rawJson)
+        {
+            if (string.IsNullOrWhiteSpace(rawJson)) return string.Empty;
+            try
+            {
+                using var doc = JsonDocument.Parse(rawJson);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object) return string.Empty;
+
+                if (root.TryGetProperty("detail", out var detailProp))
+                {
+                    if (detailProp.ValueKind == JsonValueKind.String)
+                        return detailProp.GetString() ?? string.Empty;
+
+                    // Formato de validacion FastAPI / Pydantic (lista de errores por campo)
+                    if (detailProp.ValueKind == JsonValueKind.Array)
+                    {
+                        var partes = new List<string>();
+                        foreach (var err in detailProp.EnumerateArray())
+                        {
+                            string campo = "";
+                            if (err.TryGetProperty("loc", out var loc) && loc.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in loc.EnumerateArray()) campo = item.ToString();
+                            }
+                            string msg = err.TryGetProperty("msg", out var m) ? (m.GetString() ?? "") : "";
+                            if (!string.IsNullOrWhiteSpace(msg))
+                                partes.Add(string.IsNullOrWhiteSpace(campo) ? msg : $"{campo}: {msg}");
+                        }
+                        if (partes.Count > 0) return string.Join("; ", partes);
+                    }
+                }
+
+                if (root.TryGetProperty("mensaje", out var msgProp) && msgProp.ValueKind == JsonValueKind.String)
+                    return msgProp.GetString() ?? string.Empty;
+
+                if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Object)
+                {
+                    var partes = new List<string>();
+                    foreach (var p in errorsProp.EnumerateObject())
+                        partes.Add($"{p.Name}: {p.Value}");
+                    if (partes.Count > 0) return string.Join("; ", partes);
+                }
+
+                if (root.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == JsonValueKind.String)
+                    return titleProp.GetString() ?? string.Empty;
+            }
+            catch
+            {
+                // Ignorar si no es JSON
+            }
+            return string.Empty;
         }
 
         // 1. Listar vehiculos (Spring Boot via NGINX)
@@ -124,7 +209,6 @@ namespace SOA_Venta_API
                 using var doc = JsonDocument.Parse(json);
                 JsonElement root = doc.RootElement;
 
-                // Si es un objeto paginado con clave "items"
                 if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("items", out JsonElement itemsElement))
                 {
                     root = itemsElement;

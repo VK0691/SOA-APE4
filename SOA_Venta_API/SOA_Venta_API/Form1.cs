@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -12,6 +14,30 @@ namespace SOA_Venta_API
         public Form1()
         {
             InitializeComponent();
+            txtChasis.PlaceholderText = "Chasis (17 chars)";
+            txtAnio.PlaceholderText = "Anio (2025)";
+            txtPrecio.PlaceholderText = "Precio (25000)";
+            txtToken.TextChanged += TxtToken_TextChanged;
+        }
+
+        private void TxtToken_TextChanged(object? sender, EventArgs e)
+        {
+            // Al borrar o modificar cualquier caracter del JWT se limpian los 3 listados por seguridad
+            dgvVehiculos.DataSource = null;
+            dgvCompradores.DataSource = null;
+            dgvVentas.DataSource = null;
+            lblTotal.Text = "Registros cargados: 0";
+
+            if (string.IsNullOrWhiteSpace(txtToken.Text))
+            {
+                lblEstado.ForeColor = Color.DarkOrange;
+                lblEstado.Text = "Token eliminado: los listados fueron limpiados.";
+            }
+            else
+            {
+                lblEstado.ForeColor = SystemColors.HotTrack;
+                lblEstado.Text = "Token modificado: vuelva a consultar para validar acceso.";
+            }
         }
 
         private string GetTokenOrWarn()
@@ -20,7 +46,8 @@ namespace SOA_Venta_API
             if (string.IsNullOrEmpty(token))
             {
                 lblEstado.ForeColor = Color.Red;
-                lblEstado.Text = "Por favor ingrese el token JWT.";
+                lblEstado.Text = "Validacion: ingrese el token JWT antes de consultar o registrar.";
+                MessageBox.Show("Debe ingresar un token JWT valido en la barra superior.", "Token requerido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             return token;
         }
@@ -44,6 +71,25 @@ namespace SOA_Venta_API
         // ==========================================
         // 1. VEHICULOS (Spring Boot via NGINX)
         // ==========================================
+        private async Task CargarVehiculosAsync(string token)
+        {
+            var res = await apiClient.ListarVehiculosAsync(token);
+            if (res.IsSuccess)
+            {
+                dgvVehiculos.DataSource = res.Data;
+                lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
+                lblEstado.ForeColor = Color.Green;
+                lblEstado.Text = $"HTTP {res.StatusCode}: Catalogo cargado correctamente.";
+            }
+            else
+            {
+                dgvVehiculos.DataSource = null;
+                lblTotal.Text = "Registros cargados: 0";
+                lblEstado.ForeColor = Color.Red;
+                lblEstado.Text = res.Message;
+            }
+        }
+
         private async void BtnListarVehiculos_Click(object? sender, EventArgs e)
         {
             string token = GetTokenOrWarn();
@@ -52,21 +98,7 @@ namespace SOA_Venta_API
             SetBusy(true, "Consultando vehiculos en NGINX (:8090)...");
             try
             {
-                var res = await apiClient.ListarVehiculosAsync(token);
-                if (res.IsSuccess)
-                {
-                    dgvVehiculos.DataSource = res.Data;
-                    lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
-                    lblEstado.ForeColor = Color.Green;
-                    lblEstado.Text = $"HTTP {res.StatusCode}: Catalogo cargado correctamente.";
-                }
-                else
-                {
-                    dgvVehiculos.DataSource = null;
-                    lblTotal.Text = "Registros cargados: 0";
-                    lblEstado.ForeColor = Color.Red;
-                    lblEstado.Text = res.Message;
-                }
+                await CargarVehiculosAsync(token);
             }
             finally
             {
@@ -79,39 +111,63 @@ namespace SOA_Venta_API
             string token = GetTokenOrWarn();
             if (string.IsNullOrEmpty(token)) return;
 
-            if (string.IsNullOrWhiteSpace(txtMarca.Text) ||
-                string.IsNullOrWhiteSpace(txtModelo.Text) ||
-                string.IsNullOrWhiteSpace(txtPlaca.Text) ||
-                string.IsNullOrWhiteSpace(txtChasis.Text) ||
-                string.IsNullOrWhiteSpace(txtAnio.Text) ||
-                string.IsNullOrWhiteSpace(txtColor.Text) ||
-                string.IsNullOrWhiteSpace(txtPrecio.Text))
-            {
-                MessageBox.Show("Complete todos los campos del vehiculo.", "Campos requeridos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!int.TryParse(txtAnio.Text.Trim(), out int anio) || !decimal.TryParse(txtPrecio.Text.Trim(), out decimal precio))
-            {
-                MessageBox.Show("Ano y precio deben ser valores numericos validos.", "Formato invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
+            string marca = txtMarca.Text.Trim();
+            string modelo = txtModelo.Text.Trim();
+            string placa = txtPlaca.Text.Trim().ToUpperInvariant();
             string chasis = txtChasis.Text.Trim().ToUpperInvariant();
+            string anioTxt = txtAnio.Text.Trim();
+            string color = txtColor.Text.Trim();
+            string precioTxt = txtPrecio.Text.Trim().Replace(',', '.');
+
+            // Validaciones claras y especificas por campo
+            if (string.IsNullOrWhiteSpace(marca))
+            {
+                MostrarErrorValidacion("Ingrese la marca del vehiculo (ejemplo: Toyota).", txtMarca);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(modelo))
+            {
+                MostrarErrorValidacion("Ingrese el modelo del vehiculo (ejemplo: Corolla).", txtModelo);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(placa) || placa.Length < 4)
+            {
+                MostrarErrorValidacion("Ingrese una placa valida de al menos 4 caracteres (ejemplo: ABC-1234).", txtPlaca);
+                return;
+            }
             if (chasis.Length != 17)
             {
-                MessageBox.Show("El chasis (VIN) debe tener exactamente 17 caracteres.", "Formato invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarErrorValidacion($"El chasis (VIN) debe tener exactamente 17 caracteres alfanumericos (actualmente tiene {chasis.Length}).", txtChasis);
+                return;
+            }
+            int anioMax = DateTime.Now.Year + 1;
+            if (!int.TryParse(anioTxt, out int anio) || anio < 1900 || anio > anioMax)
+            {
+                MostrarErrorValidacion($"El anio debe ser un numero entero entre 1900 y {anioMax}.", txtAnio);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(color))
+            {
+                MostrarErrorValidacion("Ingrese el color del vehiculo (ejemplo: Blanco).", txtColor);
+                return;
+            }
+            if (!decimal.TryParse(precioTxt, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal precio)
+                || precio <= 0
+                || precio > 9999999999.99m
+                || decimal.Round(precio, 2) != precio)
+            {
+                MostrarErrorValidacion("El precio debe ser un numero positivo mayor a 0 con maximo 2 decimales (ejemplo: 25000 o 25000.50).", txtPrecio);
                 return;
             }
 
             var vehiculo = new
             {
-                marca = txtMarca.Text.Trim(),
-                modelo = txtModelo.Text.Trim(),
-                placa = txtPlaca.Text.Trim().ToUpperInvariant(),
+                marca = marca,
+                modelo = modelo,
+                placa = placa,
                 chasis = chasis,
                 anio = anio,
-                color = txtColor.Text.Trim(),
+                color = color,
                 precio = precio
             };
 
@@ -122,20 +178,29 @@ namespace SOA_Venta_API
                 if (res.IsSuccess)
                 {
                     lblEstado.ForeColor = Color.Green;
-                    lblEstado.Text = $"HTTP {res.StatusCode}: Vehiculo creado exitosamente.";
-                    MessageBox.Show("Vehiculo registrado con exito en Spring Boot.", "Exito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Limpiar campos
+                    lblEstado.Text = $"HTTP {res.StatusCode}: Vehiculo {marca} {modelo} ({placa}) creado exitosamente.";
+                    MessageBox.Show($"Vehiculo {marca} {modelo} (Placa {placa}) registrado con exito.", "Registro exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    txtMarca.Clear();
+                    txtModelo.Clear();
                     txtPlaca.Clear();
                     txtChasis.Clear();
+                    txtAnio.Clear();
+                    txtColor.Clear();
                     txtPrecio.Clear();
-                    // Refrescar lista
-                    BtnListarVehiculos_Click(sender, e);
+
+                    await CargarVehiculosAsync(token);
                 }
                 else
                 {
+                    if (res.StatusCode == 401 || res.StatusCode == 403)
+                    {
+                        dgvVehiculos.DataSource = null;
+                        lblTotal.Text = "Registros cargados: 0";
+                    }
                     lblEstado.ForeColor = Color.Red;
                     lblEstado.Text = res.Message;
-                    MessageBox.Show($"Error al crear vehiculo: {res.Message}", "Error HTTP", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(res.Message, "No se pudo crear el vehiculo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             finally
@@ -147,6 +212,25 @@ namespace SOA_Venta_API
         // ==========================================
         // 2. COMPRADORES (FastAPI via NGINX)
         // ==========================================
+        private async Task CargarCompradoresAsync(string token)
+        {
+            var res = await apiClient.ListarCompradoresAsync(token);
+            if (res.IsSuccess)
+            {
+                dgvCompradores.DataSource = res.Data;
+                lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
+                lblEstado.ForeColor = Color.Green;
+                lblEstado.Text = $"HTTP {res.StatusCode}: Compradores cargados correctamente.";
+            }
+            else
+            {
+                dgvCompradores.DataSource = null;
+                lblTotal.Text = "Registros cargados: 0";
+                lblEstado.ForeColor = Color.Red;
+                lblEstado.Text = res.Message;
+            }
+        }
+
         private async void BtnListarCompradores_Click(object? sender, EventArgs e)
         {
             string token = GetTokenOrWarn();
@@ -155,21 +239,7 @@ namespace SOA_Venta_API
             SetBusy(true, "Consultando compradores en FastAPI via NGINX (:8090)...");
             try
             {
-                var res = await apiClient.ListarCompradoresAsync(token);
-                if (res.IsSuccess)
-                {
-                    dgvCompradores.DataSource = res.Data;
-                    lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
-                    lblEstado.ForeColor = Color.Green;
-                    lblEstado.Text = $"HTTP {res.StatusCode}: Compradores cargados correctamente.";
-                }
-                else
-                {
-                    dgvCompradores.DataSource = null;
-                    lblTotal.Text = "Registros cargados: 0";
-                    lblEstado.ForeColor = Color.Red;
-                    lblEstado.Text = res.Message;
-                }
+                await CargarCompradoresAsync(token);
             }
             finally
             {
@@ -182,19 +252,31 @@ namespace SOA_Venta_API
             string token = GetTokenOrWarn();
             if (string.IsNullOrEmpty(token)) return;
 
-            if (string.IsNullOrWhiteSpace(txtDocComprador.Text) ||
-                string.IsNullOrWhiteSpace(txtNombreComprador.Text) ||
-                string.IsNullOrWhiteSpace(txtCorreoComprador.Text))
+            string documento = txtDocComprador.Text.Trim();
+            string nombre = txtNombreComprador.Text.Trim();
+            string correo = txtCorreoComprador.Text.Trim();
+
+            if (documento.Length < 3 || documento.Length > 30)
             {
-                MessageBox.Show("Complete el documento, nombre y correo del comprador.", "Campos requeridos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarErrorValidacion("El documento (cedula/RUC) debe tener entre 3 y 30 caracteres.", txtDocComprador);
+                return;
+            }
+            if (nombre.Length < 2 || nombre.Length > 120)
+            {
+                MostrarErrorValidacion("El nombre completo debe tener al menos 2 caracteres.", txtNombreComprador);
+                return;
+            }
+            if (!Regex.IsMatch(correo, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                MostrarErrorValidacion("Ingrese un correo electronico valido (ejemplo: nombre@correo.com).", txtCorreoComprador);
                 return;
             }
 
             var comprador = new
             {
-                documento = txtDocComprador.Text.Trim(),
-                nombre = txtNombreComprador.Text.Trim(),
-                correo = txtCorreoComprador.Text.Trim()
+                documento = documento,
+                nombre = nombre,
+                correo = correo
             };
 
             SetBusy(true, "Creando comprador via NGINX (:8090)...");
@@ -205,17 +287,24 @@ namespace SOA_Venta_API
                 {
                     lblEstado.ForeColor = Color.Green;
                     lblEstado.Text = $"HTTP {res.StatusCode}: Comprador registrado exitosamente.";
-                    MessageBox.Show("Comprador registrado con exito en FastAPI.", "Exito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"Comprador {nombre} registrado con exito en FastAPI.", "Registro exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
                     txtDocComprador.Clear();
                     txtNombreComprador.Clear();
                     txtCorreoComprador.Clear();
-                    BtnListarCompradores_Click(sender, e);
+
+                    await CargarCompradoresAsync(token);
                 }
                 else
                 {
+                    if (res.StatusCode == 401 || res.StatusCode == 403)
+                    {
+                        dgvCompradores.DataSource = null;
+                        lblTotal.Text = "Registros cargados: 0";
+                    }
                     lblEstado.ForeColor = Color.Red;
                     lblEstado.Text = res.Message;
-                    MessageBox.Show($"Error al crear comprador: {res.Message}", "Error HTTP", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(res.Message, "No se pudo crear el comprador", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             finally
@@ -255,6 +344,14 @@ namespace SOA_Venta_API
             {
                 SetBusy(false);
             }
+        }
+
+        private void MostrarErrorValidacion(string mensaje, Control control)
+        {
+            lblEstado.ForeColor = Color.Red;
+            lblEstado.Text = $"Validacion: {mensaje}";
+            MessageBox.Show(mensaje, "Dato invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            control.Focus();
         }
 
         private void TabControlPrincipal_SelectedIndexChanged(object? sender, EventArgs e)

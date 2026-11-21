@@ -3,6 +3,7 @@ import { listarVehiculos, listarVentas } from './api/vehiculosApi.js';
 import './App.css';
 
 const dinero = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
+const ITEMS_POR_PAGINA = 6;
 
 function mostrarPrecio(precio) {
   if (precio === null || precio === undefined || precio === '') return '—';
@@ -17,6 +18,8 @@ export default function App() {
   const [ventas, setVentas] = useState([]);
   const [marca, setMarca] = useState('');
   const [seleccionado, setSeleccionado] = useState(null);
+  const [paginaVehiculos, setPaginaVehiculos] = useState(1);
+  const [paginaVentas, setPaginaVentas] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [cargandoVentas, setCargandoVentas] = useState(false);
   const [mensaje, setMensaje] = useState('Listo para consultar.');
@@ -30,6 +33,38 @@ export default function App() {
     String(v.marca ?? '').toLowerCase().includes(marca.trim().toLowerCase())
   );
 
+  // Paginacion de vehiculos
+  const totalPagVehiculos = Math.max(1, Math.ceil(visibles.length / ITEMS_POR_PAGINA));
+  const pagVehActual = Math.min(paginaVehiculos, totalPagVehiculos);
+  const vehiculosPagina = visibles.slice(
+    (pagVehActual - 1) * ITEMS_POR_PAGINA,
+    pagVehActual * ITEMS_POR_PAGINA
+  );
+
+  // Paginacion de ventas
+  const totalPagVentas = Math.max(1, Math.ceil(ventas.length / ITEMS_POR_PAGINA));
+  const pagVenActual = Math.min(paginaVentas, totalPagVentas);
+  const ventasPagina = ventas.slice(
+    (pagVenActual - 1) * ITEMS_POR_PAGINA,
+    pagVenActual * ITEMS_POR_PAGINA
+  );
+
+  function manejarCambioToken(nuevoValor) {
+    setToken(nuevoValor);
+    // Si se borra o altera el JWT se ocultan inmediatamente los listados protegidos
+    setVehiculos([]);
+    setVentas([]);
+    setSeleccionado(null);
+    setPaginaVehiculos(1);
+    setPaginaVentas(1);
+    setCodigoHttp(null);
+    setCodigoHttpVentas(null);
+    setError('');
+    setErrorVentas('');
+    setMensajeVentas('');
+    setMensaje(nuevoValor.trim() ? 'Token modificado: presione Consultar para validar.' : 'Token borrado: listados limpiados.');
+  }
+
   async function consultarVehiculos(evento) {
     evento.preventDefault();
     setCargando(true);
@@ -38,6 +73,7 @@ export default function App() {
     setCodigoHttp(null);
     setVehiculos([]);
     setSeleccionado(null);
+    setPaginaVehiculos(1);
 
     try {
       const resultado = await listarVehiculos(token);
@@ -63,6 +99,7 @@ export default function App() {
     setMensajeVentas('Consultando via NGINX → FastAPI...');
     setCodigoHttpVentas(null);
     setVentas([]);
+    setPaginaVentas(1);
 
     try {
       const resultado = await listarVentas(token);
@@ -103,7 +140,7 @@ export default function App() {
               spellCheck="false"
               placeholder="Pegar token JWT obtenido de Postman"
               value={token}
-              onChange={(e) => setToken(e.target.value)}
+              onChange={(e) => manejarCambioToken(e.target.value)}
             />
             <button
               className="secundario"
@@ -123,7 +160,7 @@ export default function App() {
               className="secundario"
               type="button"
               disabled={cargando}
-              onClick={() => { setToken(''); setMostrarToken(false); }}
+              onClick={() => { manejarCambioToken(''); setMostrarToken(false); }}
             >
               Limpiar token
             </button>
@@ -142,7 +179,7 @@ export default function App() {
         <div className="titulo-listado">
           <div>
             <h2 id="titulo-listado">2. Catálogo de vehículos</h2>
-            <p className="ayuda">Vía NGINX → Spring Boot (8081/8082). Filtro aplicado en el navegador.</p>
+            <p className="ayuda">Vía NGINX → Spring Boot (8081/8082). Filtro y paginación en el navegador.</p>
           </div>
           <span className="contador">{visibles.length} visibles</span>
         </div>
@@ -153,7 +190,7 @@ export default function App() {
           type="search"
           placeholder="Ejemplo: Toyota"
           value={marca}
-          onChange={(e) => setMarca(e.target.value)}
+          onChange={(e) => { setMarca(e.target.value); setPaginaVehiculos(1); }}
           disabled={cargando}
         />
 
@@ -172,7 +209,7 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {visibles.map((v, i) => (
+              {vehiculosPagina.map((v, i) => (
                 <tr key={v.idVehiculo ?? v.id ?? i}>
                   <td>
                     <button
@@ -207,6 +244,30 @@ export default function App() {
             </tbody>
           </table>
         </div>
+
+        {visibles.length > ITEMS_POR_PAGINA && (
+          <div className="paginacion">
+            <button
+              className="secundario"
+              type="button"
+              disabled={pagVehActual <= 1}
+              onClick={() => setPaginaVehiculos((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </button>
+            <span className="paginacion-info">
+              Página {pagVehActual} de {totalPagVehiculos} ({visibles.length} vehículos)
+            </span>
+            <button
+              className="secundario"
+              type="button"
+              disabled={pagVehActual >= totalPagVehiculos}
+              onClick={() => setPaginaVehiculos((p) => Math.min(totalPagVehiculos, p + 1))}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </section>
 
       {/* SECCIÓN 3: DETALLE */}
@@ -267,7 +328,7 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {ventas.map((v, i) => (
+              {ventasPagina.map((v, i) => (
                 <tr key={v.id ?? i}>
                   <td>{v.id ?? '—'}</td>
                   <td>{v.vehiculo_id ?? v.vehiculoId ?? '—'}</td>
@@ -287,6 +348,30 @@ export default function App() {
             </tbody>
           </table>
         </div>
+
+        {ventas.length > ITEMS_POR_PAGINA && (
+          <div className="paginacion">
+            <button
+              className="secundario"
+              type="button"
+              disabled={pagVenActual <= 1}
+              onClick={() => setPaginaVentas((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </button>
+            <span className="paginacion-info">
+              Página {pagVenActual} de {totalPagVentas} ({ventas.length} ventas)
+            </span>
+            <button
+              className="secundario"
+              type="button"
+              disabled={pagVenActual >= totalPagVentas}
+              onClick={() => setPaginaVentas((p) => Math.min(totalPagVentas, p + 1))}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );
