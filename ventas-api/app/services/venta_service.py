@@ -16,6 +16,7 @@ from app.config import NOTIF_URL, NOTIF_KEY
 from app.errors import ApiError
 from app.security import propietario
 from app.context import correlation_id_ctx
+from app.messaging.publisher import publicar_evento_venta
 
 remote = VehiculosClient()
 
@@ -148,40 +149,22 @@ def notificar(id):
         if v is None or v.estado != "COMPLETADA" or v.notificacion == "ENVIADA":
             return
 
-        cid = correlation_id_ctx.get()
-        req_headers = {"X-Notification-Key": NOTIF_KEY}
-        if cid:
-            req_headers["X-Correlation-Id"] = cid
-            logging.info("[Correlation-ID: %s] Enviando aviso notificacion venta %s", cid, v.id)
+        # Publicacion asincrona en RabbitMQ (APE 4 - Actividad 8)
+        # Se evita duplicar el aviso por HTTP directo para que notificaciones-service
+        # consuma un unico evento por venta confirmada desde la cola durable.
+        publicado_rabbit = publicar_evento_venta(v)
 
-        try:
-            r = httpx.post(
-                NOTIF_URL + "/api/notificaciones",
-                timeout=3,
-                headers=req_headers,
-                json={
-                    "vehiculoId": v.vehiculo_id,
-                    "tipo": "VENTA",
-                    "destinatario": v.comprador.correo,
-                    "mensaje": f"Venta {v.id} operación {v.operacion_id} completada"
-                }
-            )
-
-            if 200 <= r.status_code < 300:
-                v.notificacion = "ENVIADA"
-                v.intentos = 0
-                v.proximo_reintento = None
-                logging.info("Notificación de venta %s enviada con éxito (HTTP %s)", v.id, r.status_code)
-            else:
-                v.notificacion = "PENDIENTE"
-                v.intentos = (v.intentos or 0) + 1
-                espera = ESPERAS_REINTENTO[min(v.intentos - 1, len(ESPERAS_REINTENTO) - 1)]
-                v.proximo_reintento = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=espera)
-                logging.warning("Fallo al notificar venta %s (HTTP %s). Intento %s, reintento en %ss", v.id, r.status_code, v.intentos, espera)
-
-        except httpx.RequestError as ex:
+        if publicado_rabbit:
+            v.notificacion = "ENVIADA"
+            v.intentos = 0
+            v.proximo_reintento = None
+            logging.info("Notificación de venta %s publicada en RabbitMQ", v.id)
+        else:
             v.notificacion = "PENDIENTE"
             v.intentos = (v.intentos or 0) + 1
             espera = ESPERAS_REINTENTO[min(v.intentos - 1, len(ESPERAS_REINTENTO) - 1)]
             v.proximo_reintento = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=espera)
-            logging.warning("Error de red al notificar venta %s. Intento %s, reintento en %ss", v.id, v.intentos, espera)
+            logging.warning(
+                "RabbitMQ no disponible al notificar venta %s. Intento %s, reintento en %ss",
+                v.id, v.intentos, espera
+            )

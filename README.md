@@ -1,135 +1,86 @@
-# Sistema Integrado de Vehículos, Ventas y Notificaciones (SOA)
-## Taller Práctico Individual: Retos de Servicios REST Integrados
+# APE 04 — Arquitectura Multicanal de Vehículos, Compradores, Ventas y Notificaciones
 
-**Universidad Técnica de Ambato**  
-**Facultad de Ingeniería en Sistemas, Electrónica e Industrial**  
-**Carrera de Software · Aplicaciones Orientadas a Servicios (5to B)**  
-**Estudiante:** Molina Nuñez Karen Valeria  
+**Universidad Técnica de Ambato — FISEI — Carrera de Software**  
+**Asignatura:** Aplicaciones Orientadas a Servicios (5to Semestre "B")  
 **Docente:** Ing. Javier Santiago Vargas Paredes, Mg.  
+**Estudiante:** Molina Nuñez Karen Valeria  
+**Ciclo Académico:** Julio 2026 – Diciembre 2026
 
 ---
 
-## 1. Arquitectura General y Servicios
+## 1. Arquitectura y Puertos Locales
 
-Este proyecto implementa un ecosistema distribuido multicapa basado en principios de Arquitectura Orientada a Servicios (SOA), desacoplamiento de microservicios, seguridad OAuth2/JWT y resiliencia transaccional.
+| Componente | Tecnología | Puerto local | Responsabilidad principal |
+|---|---|---:|---|
+| **NGINX** | Reverse Proxy / Load Balancer | `8090` | Punto único de entrada REST; balanceo ponderado **3:1** hacia Java A y B; proxy hacia FastAPI y Notificaciones |
+| **API Vehículos — Instancia A** | Java 17 / Spring Boot | `8081` | OAuth2/JWT, catálogo de vehículos, reservas internas (`weight=3` en NGINX) |
+| **API Vehículos — Instancia B** | Java 17 / Spring Boot | `8082` | Instancia equivalente stateless sobre la misma BD (`weight=1` en NGINX) |
+| **API Ventas y Compradores** | Python 3 / FastAPI | `8000` | Gestión de compradores, registro idempotente de ventas (`Idempotency-Key`) y publicación de eventos en RabbitMQ |
+| **Servicio de Notificaciones** | Java 17 / Spring Boot AMQP | `8083` | Consumidor `@RabbitListener` de `notificaciones.ventas` con deduplicación por `eventoId` y API `GET /api/notificaciones` |
+| **RabbitMQ** | Docker (`rabbitmq:3-management`) | `5672` / `15672` | Cola durable `notificaciones.ventas` con mensajes persistentes |
+| **MySQL / MariaDB** | XAMPP MariaDB | `3306` | Base de datos operativa `venta_vehiculos` |
+| **Windows Forms** | C# / .NET 8 (`SOA_Venta_API`) | Escritorio | Crear/listar vehículos y compradores; listar ventas (**solo consulta**) |
+| **PWA Móvil** | HTML5 / CSS3 / JS ES Modules | `5174` | Login JWT (`POST /oauth/token`) y **único cliente autorizado para registrar ventas** (`POST /api/ventas`) |
+| **Cliente Web React** | React + Vite + Fetch | `5173` | Consulta de catálogo, filtro por marca, detalle y consulta de ventas (**sin creación de ventas**) |
+| **Cliente JavaFX** | JavaFX + `HttpClient` | Escritorio | Consulta de vehículos y monitoreo automático de notificaciones de ventas (polling cada 4 s) |
 
-| Directorio | Tecnología | Puerto | Responsabilidad Principal |
-| :--- | :--- | :---: | :--- |
-| **`venta-vehiculos-api_security`** | Java 17 / Spring Boot 3 | `8081` | Catálogo maestro de vehículos, emisión de tokens JWT, RBAC (`ADMIN`/`OPERADOR`), gestión de reservas y correlación distribuida. |
-| **`ventas-api`** | Python 3.10+ / FastAPI | `8000` | Gestión de compradores, ventas transaccionales, resumen contable, emisión de comprobantes fiscales, worker asíncrono y conciliación. |
-| **`notificaciones-service`** | Java 17 / Spring Boot 3 | `8083` | Receptor de eventos de notificación con clave de servicio (`X-Notification-Key`). |
-| **`MySQL / MariaDB`** | Motor Relacional | `3306` | Base de datos unificada `venta_vehiculos` con integridad referencial compartida. |
-| **`.postman`** | JSON Collections | --- | Colecciones completas de pruebas automatizadas y manuales organizadas por nivel de reto. |
-
----
-
-## 2. Requisitos Previos
-
-- **Java JDK**: 17 (OpenJDK o Eclipse Temurin).
-- **Python**: 3.10 o superior (con `pip` y `venv`).
-- **MySQL / XAMPP**: Servicio MySQL en ejecución en el puerto `3306`.
-- **Postman**: Para la ejecución y verificación de los contratos de prueba.
+> **Nota técnica de puertos:** En el equipo de pruebas el puerto `8080` se encuentra ocupado por un servicio local de Oracle XE (`TNSLSNR`). En concordancia con los ajustes técnicos permitidos por la guía APE 04, las instancias Java se desplegaron en `8081` y `8082` (detrás de NGINX `:8090`), FastAPI en `8000` y Notificaciones en `8083`.
 
 ---
 
-## 3. Secuencia de Inicio de los Servicios
+## 2. Preparación de Credenciales Locales (Sin Secretos en Repositorio)
 
-Para garantizar que las dependencias remotas y las conexiones de base de datos se encuentren disponibles, se recomienda encender los componentes en el siguiente orden:
+Antes de ejecutar los servicios, copie cada plantilla y complete sus credenciales locales:
 
-```mermaid
-flowchart LR
-    A["1. MySQL (3306)"] --> B["2. venta-vehiculos-api_security (8081)"]
-    B --> C["3. notificaciones-service (8083)"]
-    C --> D["4. ventas-api (8000)"]
-    D --> E["5. retry_worker (Segundo plano)"]
+```powershell
+Copy-Item ventas-api\.env.example ventas-api\.env
+Copy-Item venta-vehiculos-api_security\src\main\resources\application.properties.example venta-vehiculos-api_security\src\main\resources\application.properties
+Copy-Item notificaciones-service\src\main\resources\application.properties.example notificaciones-service\src\main\resources\application.properties
 ```
 
-### Paso 1: Base de Datos MySQL
-1. Iniciar el servicio de MySQL (por ejemplo mediante el panel de control de XAMPP).
-2. Asegurarse de que exista la base de datos `venta_vehiculos`. Si no existe:
-   ```sql
-   CREATE DATABASE venta_vehiculos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+Importe el esquema SQL limpio (sin datos personales) si parte de una base vacía:
+
+```powershell
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS venta_vehiculos;"
+mysql -u root venta_vehiculos < sql/schema_venta_vehiculos.sql
+```
+
+---
+
+## 3. Orden de Arranque Reproducible
+
+1. **MySQL / MariaDB (`:3306`):** Iniciar servicio XAMPP MySQL.
+2. **RabbitMQ (`:5672` / `:15672`):**
+   ```powershell
+   docker compose -f docker-compose.rabbitmq.yml up -d
    ```
-
-### Paso 2: Iniciar `venta-vehiculos-api_security` (Java - Puerto 8081)
-Abrir una terminal en `venta-vehiculos-api_security/`:
-```bash
-# En Windows:
-.\mvnw.cmd spring-boot:run
-
-# En Linux/macOS:
-./mvnw spring-boot:run
-```
-
-### Paso 3: Iniciar `notificaciones-service` (Java - Puerto 8083)
-Abrir una terminal en `notificaciones-service/`:
-```bash
-# En Windows:
-.\mvnw.cmd spring-boot:run
-
-# En Linux/macOS:
-./mvnw spring-boot:run
-```
-
-### Paso 4: Iniciar `ventas-api` (FastAPI - Puerto 8000)
-Abrir una terminal en `ventas-api/`:
-```bash
-# 1. Crear y activar entorno virtual
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1    # (Windows)
-# source .venv/bin/activate     # (Linux/macOS)
-
-# 2. Instalar dependencias
-pip install -r requirements.txt
-
-# 3. Copiar archivo de entorno y ejecutar migraciones
-copy .env.example .env          # (Windows)
-# cp .env.example .env          # (Linux/macOS)
-alembic upgrade head
-
-# 4. Iniciar servidor FastAPI
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Paso 5 (Opcional): Iniciar Worker de Reintentos
-En otra terminal en `ventas-api/`:
-```bash
-python -m app.worker
-```
-
----
-
-## 4. Retos Desarrollados y Solucionados
-
-### Nivel 1 · Retos Fáciles
-- **F01**: `GET /api/compradores` — Listado de compradores del usuario autenticado con aislamiento de inquilino.
-- **F02**: `GET /api/compradores/{id}` — Detalle de comprador por ID validando existencia (404) y propiedad (403).
-- **F03**: `GET /api/ventas` — Listado de ventas ordenadas de forma compuesta y determinista (`fecha DESC, id DESC`).
-- **F04**: `GET /api/ventas?estado=...` — Filtro por estado del ciclo de vida validando estados admitidos (422).
-- **F05**: `GET /api/vehiculos?marca=...&estado=...` — Filtro combinado en Spring Boot por marca y disponibilidad del catálogo.
-
-### Nivel 2 · Retos Difíciles
-- **D06**: `GET /api/ventas?page=1&limit=5` — Paginación integral sin romper el contrato base, devolviendo metadata (`total`, `paginas`, `items`, etc.).
-- **D07**: `GET /api/compradores?buscar=...` — Búsqueda flexible por texto parcial (nombre, documento, correo) con comodines SQL.
-- **D08**: `PUT /api/compradores/{id}` — Actualización idempotente con validación estricta de correo electrónico y unicidad.
-- **D09**: `GET /api/ventas/resumen` — Resumen consolidado numérico y total de ingresos con precisión decimal (`Decimal`) sin colisión de rutas.
-- **D10**: `GET /api/ventas/{id}/comprobante` — Emisión de comprobante formal exigiendo estado completado (409) y estructura fiscal detallada.
-
-### Nivel 3 · Retos Superdifíciles (Implementados)
-- **S11**: Manejo riguroso de excepciones y auditoría de fallos remotos sin transacciones fantasma.
-- **S12**: `GET /api/ventas/incidencias` — Monitoreo de ventas fallidas o con reintentos agotados.
-- **S13**: `POST /api/ventas/{id}/conciliar` — Endpoint de conciliación manual de ventas con recuperación de reserva remota.
-- **S14**: Propagación transversal de `X-Correlation-Id` a través de FastAPI, Spring Boot y Notificaciones.
-- **S15**: Worker asíncrono desacoplado con backoff exponencial.
-
----
-
-## 5. Pruebas en Postman
-
-En el directorio `.postman/` se suministran tres colecciones listas para importar en Postman:
-1. `Retos_Faciles_F01_F05.postman_collection.json`
-2. `Retos_Dificiles_D06_D10.postman_collection.json`
-3. `Retos_Superdificiles_S11_S15.postman_collection.json`
-
-Cada una incluye peticiones configuradas con autenticación heredada, variables de entorno y pruebas obligatorias tanto satisfactorias (casos positivos) como de rechazo controlado (400, 401, 403, 404, 409, 422).
-
+3. **NGINX (`:8090`):** Copiar `nginx.conf` a `conf/nginx.conf`, validar y arrancar:
+   ```powershell
+   nginx -t
+   nginx -g "daemon off;"
+   ```
+4. **API Vehículos Spring Boot — Instancia A (`:8081`) e Instancia B (`:8082`):**
+   ```powershell
+   cd venta-vehiculos-api_security
+   .\mvnw.cmd package -DskipTests
+   java -jar target\venta-vehiculos-api-0.0.1-SNAPSHOT.jar --server.port=8081
+   java -jar target\venta-vehiculos-api-0.0.1-SNAPSHOT.jar --server.port=8082
+   ```
+5. **API Ventas FastAPI (`:8000`):**
+   ```powershell
+   cd ventas-api
+   python -m venv .venv
+   .\.venv\Scripts\pip install -r requirements.txt
+   .\.venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000
+   ```
+6. **Servicio de Notificaciones (`:8083`):**
+   ```powershell
+   cd notificaciones-service
+   .\mvnw.cmd package -DskipTests
+   java -jar target\notificaciones-service-0.0.1-SNAPSHOT.jar
+   ```
+7. **Clientes:**
+   - **Windows Forms:** `cd SOA_Venta_API\SOA_Venta_API && dotnet run`
+   - **PWA Móvil (`:5174`):** `cd AplicacionMovilPWA && node server.mjs`
+   - **React Web (`:5173`):** `cd reactweb\react-fetch-vehiculos && npm install && npm run dev`
+   - **JavaFX:** `cd escritorioFX\consultarvehiculojavafx && mvn javafx:run`

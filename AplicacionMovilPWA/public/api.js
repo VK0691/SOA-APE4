@@ -1,53 +1,137 @@
 /**
- * Cliente HTTP de vehículos. No conoce la interfaz ni accede a MySQL.
- * La ruta relativa /api/vehiculos es reenviada por server.mjs a Spring Boot.
+ * api.js — Cliente HTTP de la PWA.
+ * Esta PWA es el UNICO cliente autorizado a registrar ventas (POST /api/ventas).
+ * El token JWT no se persiste: vive solo en memoria durante la sesion.
  */
+
 export function normalizarToken(entrada = '') {
-  // Se aceptan tanto JWT sin prefijo como textos que empiezan con Bearer.
   return String(entrada).trim().replace(/^Bearer\s+/i, '').trim();
 }
 
-export async function listarVehiculos(entradaToken, ejecutarFetch = fetch) {
-  const jwt = normalizarToken(entradaToken);
-  const encabezados = new Headers({ Accept: 'application/json' });
+function headersBase(jwt) {
+  const h = new Headers({ Accept: 'application/json' });
+  if (jwt) h.set('Authorization', `Bearer ${jwt}`);
+  return h;
+}
 
-  // Si no hay JWT, el backend es quien determina si responde HTTP 401.
-  if (jwt) encabezados.set('Authorization', `Bearer ${jwt}`);
+async function parsearRespuesta(respuesta) {
+  const texto = await respuesta.text();
+  try { return JSON.parse(texto); } catch { return texto; }
+}
+
+// POST /oauth/token — login con credenciales de usuario
+export async function login(username, password) {
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    username,
+    password,
+  });
+
+  // Credenciales del cliente OAuth2 (vehiculos-client)
+  const credenciales = btoa('vehiculos-client:cliente-local-aula-2026-cambiar');
 
   let respuesta;
   try {
-    // No se almacena en caché la respuesta con datos protegidos.
-    respuesta = await ejecutarFetch('/api/vehiculos', {
-      method: 'GET',
-      headers: encabezados,
+    respuesta = await fetch('/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credenciales}`,
+        'Accept': 'application/json',
+      },
+      body,
       cache: 'no-store',
     });
   } catch {
-    throw new Error('No se pudo conectar con el servicio. Compruebe la red y Spring Boot.');
+    throw new Error('No se pudo conectar con NGINX para el login.');
   }
 
+  const datos = await parsearRespuesta(respuesta);
   if (!respuesta.ok) {
-    const mensajes = {
-      401: 'HTTP 401: JWT ausente, inválido o vencido.',
-      403: 'HTTP 403: el usuario no tiene permiso para consultar.',
-      404: 'HTTP 404: no se encontró /api/vehiculos.',
-      502: 'HTTP 502: no se pudo establecer conexión con Spring Boot.',
-      503: 'HTTP 503: el servicio no está disponible.',
-      504: 'HTTP 504: Spring Boot no respondió a tiempo.',
-    };
-    const error = new Error(mensajes[respuesta.status] || `HTTP ${respuesta.status}: consulta no completada.`);
-    error.codigoHttp = respuesta.status;
-    throw error;
+    throw Object.assign(
+      new Error(datos?.mensaje || datos?.error_description || `HTTP ${respuesta.status}: Login fallido`),
+      { codigoHttp: respuesta.status }
+    );
+  }
+  return { codigoHttp: respuesta.status, accessToken: datos.access_token, tokenType: datos.token_type };
+}
+
+// GET /api/vehiculos
+export async function listarVehiculos(jwt) {
+  const token = normalizarToken(jwt);
+  let respuesta;
+  try {
+    respuesta = await fetch('/api/vehiculos', {
+      method: 'GET',
+      headers: headersBase(token),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('Error de red al consultar vehiculos.');
+  }
+  if (!respuesta.ok) {
+    throw Object.assign(new Error(`HTTP ${respuesta.status}: Error al listar vehiculos`), { codigoHttp: respuesta.status });
+  }
+  const datos = await respuesta.json();
+  return { codigoHttp: respuesta.status, vehiculos: Array.isArray(datos) ? datos : [] };
+}
+
+// GET /api/compradores
+export async function listarCompradores(jwt) {
+  const token = normalizarToken(jwt);
+  let respuesta;
+  try {
+    respuesta = await fetch('/api/compradores', {
+      method: 'GET',
+      headers: headersBase(token),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('Error de red al consultar compradores.');
+  }
+  if (!respuesta.ok) {
+    throw Object.assign(new Error(`HTTP ${respuesta.status}: Error al listar compradores`), { codigoHttp: respuesta.status });
+  }
+  const datos = await respuesta.json();
+  return { codigoHttp: respuesta.status, compradores: Array.isArray(datos) ? datos : [] };
+}
+
+// POST /api/ventas — UNICO cliente autorizado para registrar ventas
+export async function registrarVenta(jwt, vehiculoId, compradorId, idempotencyKey) {
+  const token = normalizarToken(jwt);
+  const h = headersBase(token);
+  h.set('Content-Type', 'application/json');
+  h.set('Idempotency-Key', idempotencyKey);
+
+  let respuesta;
+  try {
+    respuesta = await fetch('/api/ventas', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({ vehiculoId, compradorId }),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('Error de red al registrar la venta.');
   }
 
-  let datos;
+  const datos = await parsearRespuesta(respuesta);
+  return { codigoHttp: respuesta.status, datos, esIdempotente: respuesta.status === 200 };
+}
+
+// GET /api/ventas/{id}
+export async function consultarVenta(jwt, id) {
+  const token = normalizarToken(jwt);
+  let respuesta;
   try {
-    datos = await respuesta.json();
+    respuesta = await fetch(`/api/ventas/${id}`, {
+      method: 'GET',
+      headers: headersBase(token),
+      cache: 'no-store',
+    });
   } catch {
-    throw new Error('La API devolvió una respuesta que no es JSON válido.');
+    throw new Error('Error de red al consultar la venta.');
   }
-  if (!Array.isArray(datos)) {
-    throw new Error('La API debe devolver un arreglo JSON de vehículos.');
-  }
-  return { codigoHttp: respuesta.status, vehiculos: datos };
+  const datos = await parsearRespuesta(respuesta);
+  return { codigoHttp: respuesta.status, datos };
 }

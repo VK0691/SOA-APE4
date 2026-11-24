@@ -1,0 +1,15 @@
+# Plantilla de configuracion - notificaciones-service (Spring Boot + RabbitMQ)
+# Copie a application.properties y configure sus valores locales antes de ejecutar.
+
+spring.application.name=notificaciones-service
+server.port=8083
+server.address=127.0.0.1
+
+app.notificacion-key=<CONFIGURAR_CLAVE_NOTIFICACIONES_MIN_32_CHARS>
+
+# Configuracion RabbitMQ (APE 4 - Actividades 8 y 9)
+spring.rabbitmq.host=127.0.0.1
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+app.rabbitmq.queue.ventas=notificaciones.ventas

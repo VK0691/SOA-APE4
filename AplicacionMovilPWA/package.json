@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Aplicación móvil PWA para consultar vehículos de Spring Boot con JWT",
+  "description": "PWA movil — login JWT, catalogo, compradores y registro exclusivo de ventas via NGINX :8090",
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",

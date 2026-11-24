@@ -1,8 +1,7 @@
 using System;
-using System.Data;
 using System.Drawing;
-using System.Net.Http;
-using System.Text.Json;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -10,224 +9,356 @@ namespace SOA_Venta_API
 {
     public partial class Form1 : Form
     {
-        // URL del endpoint de la API
-        private readonly string apiUrl = "http://127.0.0.1:8000/api/compradores";
-
-        // Instancia reutilizable de HttpClient
-        private static readonly HttpClient client = new HttpClient();
+        private readonly ApiClient apiClient = new ApiClient("http://127.0.0.1:8090");
 
         public Form1()
         {
             InitializeComponent();
-
-            // Token JWT inicial basado en el código de Postman
-            txtToken.Text = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbi1sb2NhbCIsInJvbCI6IkFETUlOIiwic2NvcGUiOiJ2ZWhpY3Vsb3MiLCJ0aXBvIjoiYWNjZXNzIiwiaWRhcGxpIjoiOTIiLCJpYXQiOjE3OTM5MzA5MTUsImV4cCI6MTc5MzkzMjcxNX0.pZhdQwr34yysH833iP9dwajI4b75t4on1tB6AKcTZc4";
+            txtChasis.PlaceholderText = "Chasis (17 chars)";
+            txtAnio.PlaceholderText = "Anio (2025)";
+            txtPrecio.PlaceholderText = "Precio (25000)";
+            txtToken.TextChanged += TxtToken_TextChanged;
         }
 
-        private async void btnConsultar_Click(object sender, EventArgs e)
+        private void TxtToken_TextChanged(object? sender, EventArgs e)
         {
-            string token = txtToken.Text.Trim();
+            // Al borrar o modificar cualquier caracter del JWT se limpian los 3 listados por seguridad
+            dgvVehiculos.DataSource = null;
+            dgvCompradores.DataSource = null;
+            dgvVentas.DataSource = null;
+            lblTotal.Text = "Registros cargados: 0";
 
-            if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrWhiteSpace(txtToken.Text))
             {
-                lblEstado.ForeColor = Color.Red;
-                lblEstado.Text = "Por favor ingrese el token JWT.";
-                return;
-            }
-
-            // Estado visual de consulta en progreso
-            btnConsultar.Enabled = false;
-            lblEstado.ForeColor = Color.Blue;
-            lblEstado.Text = "Consultando...";
-            Cursor = Cursors.WaitCursor;
-
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
-
-                string authHeader = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-                    ? token
-                    : $"Bearer {token}";
-
-                request.Headers.Add("Authorization", authHeader);
-
-                using var response = await client.SendAsync(request);
-
-                // Manejo de respuestas HTTP según el código de estado
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) // 401
-                {
-                    lblEstado.ForeColor = Color.Red;
-                    lblEstado.Text = "HTTP 401: JWT inválido o vencido";
-                    dgvVehiculos.DataSource = null;
-                    lblTotal.Text = "Total de vehículos: 0";
-                    return;
-                }
-
-                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden) // 403
-                {
-                    lblEstado.ForeColor = Color.Red;
-                    lblEstado.Text = "HTTP 403: No autorizado para acceder a este recurso";
-                    dgvVehiculos.DataSource = null;
-                    lblTotal.Text = "Total de vehículos: 0";
-                    return;
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    lblEstado.ForeColor = Color.Red;
-                    lblEstado.Text = $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
-                    dgvVehiculos.DataSource = null;
-                    lblTotal.Text = "Total de vehículos: 0";
-                    return;
-                }
-
-                // Respuesta exitosa (HTTP 200)
-                string responseBody = await response.Content.ReadAsStringAsync();
-                DataTable dt = ConvertJsonToDataTable(responseBody);
-
-                dgvVehiculos.DataSource = dt;
-                lblTotal.Text = $"Total de vehículos: {dt.Rows.Count}";
-
-                lblEstado.ForeColor = Color.Green;
-                lblEstado.Text = $"Consulta exitosa ({dt.Rows.Count} registro{(dt.Rows.Count == 1 ? "" : "s")}).";
-            }
-            catch (HttpRequestException ex)
-            {
-                lblEstado.ForeColor = Color.Red;
-                lblEstado.Text = $"Error de conexión con la API: {ex.Message}";
-                dgvVehiculos.DataSource = null;
-                lblTotal.Text = "Total de vehículos: 0";
-            }
-            catch (Exception ex)
-            {
-                lblEstado.ForeColor = Color.Red;
-                lblEstado.Text = $"Error: {ex.Message}";
-                dgvVehiculos.DataSource = null;
-                lblTotal.Text = "Total de vehículos: 0";
-            }
-            finally
-            {
-                btnConsultar.Enabled = true;
-                Cursor = Cursors.Default;
-            }
-        }
-
-        /// <summary>
-        /// Convierte dinámicamente un JSON (array u objeto) a un DataTable para el DataGridView
-        /// </summary>
-        private DataTable ConvertJsonToDataTable(string json)
-        {
-            var dataTable = new DataTable();
-
-            if (string.IsNullOrWhiteSpace(json))
-                return dataTable;
-
-            using var doc = JsonDocument.Parse(json);
-            JsonElement root = doc.RootElement;
-
-            JsonElement arrayElement = default;
-            bool foundArray = false;
-
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                arrayElement = root;
-                foundArray = true;
-            }
-            else if (root.ValueKind == JsonValueKind.Object)
-            {
-                // Busca si contiene una propiedad tipo lista (ej. "data", "compradores", "vehiculos", etc.)
-                foreach (var property in root.EnumerateObject())
-                {
-                    if (property.Value.ValueKind == JsonValueKind.Array)
-                    {
-                        arrayElement = property.Value;
-                        foundArray = true;
-                        break;
-                    }
-                }
-
-                // Si no tiene arreglos, se muestra el objeto individual como una sola fila
-                if (!foundArray)
-                {
-                    foreach (var prop in root.EnumerateObject())
-                    {
-                        dataTable.Columns.Add(prop.Name, typeof(string));
-                    }
-
-                    var row = dataTable.NewRow();
-                    foreach (var prop in root.EnumerateObject())
-                    {
-                        row[prop.Name] = FormatJsonValue(prop.Value);
-                    }
-                    dataTable.Rows.Add(row);
-                    return dataTable;
-                }
+                lblEstado.ForeColor = Color.DarkOrange;
+                lblEstado.Text = "Token eliminado: los listados fueron limpiados.";
             }
             else
             {
-                dataTable.Columns.Add("Valor", typeof(string));
-                dataTable.Rows.Add(root.ToString());
-                return dataTable;
+                lblEstado.ForeColor = SystemColors.HotTrack;
+                lblEstado.Text = "Token modificado: vuelva a consultar para validar acceso.";
+            }
+        }
+
+        private string GetTokenOrWarn()
+        {
+            string token = txtToken.Text.Trim();
+            if (string.IsNullOrEmpty(token))
+            {
+                lblEstado.ForeColor = Color.Red;
+                lblEstado.Text = "Validacion: ingrese el token JWT antes de consultar o registrar.";
+                MessageBox.Show("Debe ingresar un token JWT valido en la barra superior.", "Token requerido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return token;
+        }
+
+        private void SetBusy(bool busy, string mensaje = "")
+        {
+            Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
+            btnListarVehiculos.Enabled = !busy;
+            btnCrearVehiculo.Enabled = !busy;
+            btnListarCompradores.Enabled = !busy;
+            btnCrearComprador.Enabled = !busy;
+            btnListarVentas.Enabled = !busy;
+
+            if (busy)
+            {
+                lblEstado.ForeColor = Color.Blue;
+                lblEstado.Text = mensaje;
+            }
+        }
+
+        // ==========================================
+        // 1. VEHICULOS (Spring Boot via NGINX)
+        // ==========================================
+        private async Task CargarVehiculosAsync(string token)
+        {
+            var res = await apiClient.ListarVehiculosAsync(token);
+            if (res.IsSuccess)
+            {
+                dgvVehiculos.DataSource = res.Data;
+                lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
+                lblEstado.ForeColor = Color.Green;
+                lblEstado.Text = $"HTTP {res.StatusCode}: Catalogo cargado correctamente.";
+            }
+            else
+            {
+                dgvVehiculos.DataSource = null;
+                lblTotal.Text = "Registros cargados: 0";
+                lblEstado.ForeColor = Color.Red;
+                lblEstado.Text = res.Message;
+            }
+        }
+
+        private async void BtnListarVehiculos_Click(object? sender, EventArgs e)
+        {
+            string token = GetTokenOrWarn();
+            if (string.IsNullOrEmpty(token)) return;
+
+            SetBusy(true, "Consultando vehiculos en NGINX (:8090)...");
+            try
+            {
+                await CargarVehiculosAsync(token);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private async void BtnCrearVehiculo_Click(object? sender, EventArgs e)
+        {
+            string token = GetTokenOrWarn();
+            if (string.IsNullOrEmpty(token)) return;
+
+            string marca = txtMarca.Text.Trim();
+            string modelo = txtModelo.Text.Trim();
+            string placa = txtPlaca.Text.Trim().ToUpperInvariant();
+            string chasis = txtChasis.Text.Trim().ToUpperInvariant();
+            string anioTxt = txtAnio.Text.Trim();
+            string color = txtColor.Text.Trim();
+            string precioTxt = txtPrecio.Text.Trim().Replace(',', '.');
+
+            // Validaciones claras y especificas por campo
+            if (string.IsNullOrWhiteSpace(marca))
+            {
+                MostrarErrorValidacion("Ingrese la marca del vehiculo (ejemplo: Toyota).", txtMarca);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(modelo))
+            {
+                MostrarErrorValidacion("Ingrese el modelo del vehiculo (ejemplo: Corolla).", txtModelo);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(placa) || placa.Length < 4)
+            {
+                MostrarErrorValidacion("Ingrese una placa valida de al menos 4 caracteres (ejemplo: ABC-1234).", txtPlaca);
+                return;
+            }
+            if (chasis.Length != 17)
+            {
+                MostrarErrorValidacion($"El chasis (VIN) debe tener exactamente 17 caracteres alfanumericos (actualmente tiene {chasis.Length}).", txtChasis);
+                return;
+            }
+            int anioMax = DateTime.Now.Year + 1;
+            if (!int.TryParse(anioTxt, out int anio) || anio < 1900 || anio > anioMax)
+            {
+                MostrarErrorValidacion($"El anio debe ser un numero entero entre 1900 y {anioMax}.", txtAnio);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(color))
+            {
+                MostrarErrorValidacion("Ingrese el color del vehiculo (ejemplo: Blanco).", txtColor);
+                return;
+            }
+            if (!decimal.TryParse(precioTxt, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal precio)
+                || precio <= 0
+                || precio > 9999999999.99m
+                || decimal.Round(precio, 2) != precio)
+            {
+                MostrarErrorValidacion("El precio debe ser un numero positivo mayor a 0 con maximo 2 decimales (ejemplo: 25000 o 25000.50).", txtPrecio);
+                return;
             }
 
-            // 1. Obtener todas las columnas presentes en los elementos del arreglo
-            foreach (var item in arrayElement.EnumerateArray())
+            var vehiculo = new
             {
-                if (item.ValueKind == JsonValueKind.Object)
+                marca = marca,
+                modelo = modelo,
+                placa = placa,
+                chasis = chasis,
+                anio = anio,
+                color = color,
+                precio = precio
+            };
+
+            SetBusy(true, "Creando vehiculo via NGINX (:8090)...");
+            try
+            {
+                var res = await apiClient.CrearVehiculoAsync(token, vehiculo);
+                if (res.IsSuccess)
                 {
-                    foreach (var prop in item.EnumerateObject())
-                    {
-                        if (!dataTable.Columns.Contains(prop.Name))
-                        {
-                            dataTable.Columns.Add(prop.Name, typeof(string));
-                        }
-                    }
-                }
-            }
+                    lblEstado.ForeColor = Color.Green;
+                    lblEstado.Text = $"HTTP {res.StatusCode}: Vehiculo {marca} {modelo} ({placa}) creado exitosamente.";
+                    MessageBox.Show($"Vehiculo {marca} {modelo} (Placa {placa}) registrado con exito.", "Registro exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            if (dataTable.Columns.Count == 0 && arrayElement.GetArrayLength() > 0)
-            {
-                dataTable.Columns.Add("Valor", typeof(string));
-            }
+                    txtMarca.Clear();
+                    txtModelo.Clear();
+                    txtPlaca.Clear();
+                    txtChasis.Clear();
+                    txtAnio.Clear();
+                    txtColor.Clear();
+                    txtPrecio.Clear();
 
-            // 2. Llenar los datos de cada fila
-            foreach (var item in arrayElement.EnumerateArray())
-            {
-                var row = dataTable.NewRow();
-                if (item.ValueKind == JsonValueKind.Object)
-                {
-                    foreach (var prop in item.EnumerateObject())
-                    {
-                        row[prop.Name] = FormatJsonValue(prop.Value);
-                    }
+                    await CargarVehiculosAsync(token);
                 }
                 else
                 {
-                    row["Valor"] = FormatJsonValue(item);
+                    if (res.StatusCode == 401 || res.StatusCode == 403)
+                    {
+                        dgvVehiculos.DataSource = null;
+                        lblTotal.Text = "Registros cargados: 0";
+                    }
+                    lblEstado.ForeColor = Color.Red;
+                    lblEstado.Text = res.Message;
+                    MessageBox.Show(res.Message, "No se pudo crear el vehiculo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                dataTable.Rows.Add(row);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        // ==========================================
+        // 2. COMPRADORES (FastAPI via NGINX)
+        // ==========================================
+        private async Task CargarCompradoresAsync(string token)
+        {
+            var res = await apiClient.ListarCompradoresAsync(token);
+            if (res.IsSuccess)
+            {
+                dgvCompradores.DataSource = res.Data;
+                lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
+                lblEstado.ForeColor = Color.Green;
+                lblEstado.Text = $"HTTP {res.StatusCode}: Compradores cargados correctamente.";
+            }
+            else
+            {
+                dgvCompradores.DataSource = null;
+                lblTotal.Text = "Registros cargados: 0";
+                lblEstado.ForeColor = Color.Red;
+                lblEstado.Text = res.Message;
+            }
+        }
+
+        private async void BtnListarCompradores_Click(object? sender, EventArgs e)
+        {
+            string token = GetTokenOrWarn();
+            if (string.IsNullOrEmpty(token)) return;
+
+            SetBusy(true, "Consultando compradores en FastAPI via NGINX (:8090)...");
+            try
+            {
+                await CargarCompradoresAsync(token);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private async void BtnCrearComprador_Click(object? sender, EventArgs e)
+        {
+            string token = GetTokenOrWarn();
+            if (string.IsNullOrEmpty(token)) return;
+
+            string documento = txtDocComprador.Text.Trim();
+            string nombre = txtNombreComprador.Text.Trim();
+            string correo = txtCorreoComprador.Text.Trim();
+
+            if (documento.Length < 3 || documento.Length > 30)
+            {
+                MostrarErrorValidacion("El documento (cedula/RUC) debe tener entre 3 y 30 caracteres.", txtDocComprador);
+                return;
+            }
+            if (nombre.Length < 2 || nombre.Length > 120)
+            {
+                MostrarErrorValidacion("El nombre completo debe tener al menos 2 caracteres.", txtNombreComprador);
+                return;
+            }
+            if (!Regex.IsMatch(correo, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                MostrarErrorValidacion("Ingrese un correo electronico valido (ejemplo: nombre@correo.com).", txtCorreoComprador);
+                return;
             }
 
-            return dataTable;
-        }
-
-        private string FormatJsonValue(JsonElement element)
-        {
-            return element.ValueKind switch
+            var comprador = new
             {
-                JsonValueKind.Null => string.Empty,
-                JsonValueKind.Undefined => string.Empty,
-                JsonValueKind.String => element.GetString() ?? string.Empty,
-                JsonValueKind.Number => element.GetRawText(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => element.GetRawText()
+                documento = documento,
+                nombre = nombre,
+                correo = correo
             };
+
+            SetBusy(true, "Creando comprador via NGINX (:8090)...");
+            try
+            {
+                var res = await apiClient.CrearCompradorAsync(token, comprador);
+                if (res.IsSuccess)
+                {
+                    lblEstado.ForeColor = Color.Green;
+                    lblEstado.Text = $"HTTP {res.StatusCode}: Comprador registrado exitosamente.";
+                    MessageBox.Show($"Comprador {nombre} registrado con exito en FastAPI.", "Registro exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    txtDocComprador.Clear();
+                    txtNombreComprador.Clear();
+                    txtCorreoComprador.Clear();
+
+                    await CargarCompradoresAsync(token);
+                }
+                else
+                {
+                    if (res.StatusCode == 401 || res.StatusCode == 403)
+                    {
+                        dgvCompradores.DataSource = null;
+                        lblTotal.Text = "Registros cargados: 0";
+                    }
+                    lblEstado.ForeColor = Color.Red;
+                    lblEstado.Text = res.Message;
+                    MessageBox.Show(res.Message, "No se pudo crear el comprador", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            finally
+            {
+                SetBusy(false);
+            }
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        // ==========================================
+        // 3. VENTAS (FastAPI via NGINX - SOLO CONSULTA)
+        // ==========================================
+        private async void BtnListarVentas_Click(object? sender, EventArgs e)
         {
+            string token = GetTokenOrWarn();
+            if (string.IsNullOrEmpty(token)) return;
 
+            SetBusy(true, "Consultando ventas en FastAPI via NGINX (:8090)...");
+            try
+            {
+                var res = await apiClient.ListarVentasAsync(token);
+                if (res.IsSuccess)
+                {
+                    dgvVentas.DataSource = res.Data;
+                    lblTotal.Text = $"Registros cargados: {res.Data?.Rows.Count ?? 0}";
+                    lblEstado.ForeColor = Color.Green;
+                    lblEstado.Text = $"HTTP {res.StatusCode}: Listado de ventas cargado (Solo consulta).";
+                }
+                else
+                {
+                    dgvVentas.DataSource = null;
+                    lblTotal.Text = "Registros cargados: 0";
+                    lblEstado.ForeColor = Color.Red;
+                    lblEstado.Text = res.Message;
+                }
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private void MostrarErrorValidacion(string mensaje, Control control)
+        {
+            lblEstado.ForeColor = Color.Red;
+            lblEstado.Text = $"Validacion: {mensaje}";
+            MessageBox.Show(mensaje, "Dato invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            control.Focus();
+        }
+
+        private void TabControlPrincipal_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            lblEstado.ForeColor = SystemColors.HotTrack;
+            lblEstado.Text = $"Pestana activa: {tabControlPrincipal.SelectedTab?.Text}";
+            lblTotal.Text = "Registros cargados: -";
         }
     }
 }
